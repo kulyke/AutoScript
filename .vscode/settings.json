@@ -1,0 +1,10 @@
+{
+    // =============================
+    // CMake 基础配置
+    // =============================
+    "cmake.generator": "Ninja",
+
+    "cmake.configureOnOpen": true,
+
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+}

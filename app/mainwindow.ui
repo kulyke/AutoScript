@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+<class>MainWindow</class>
+
+<widget class="QMainWindow" name="MainWindow">
+
+ <property name="windowTitle">
+  <string>AutoScript</string>
+ </property>
+
+ <widget class="QWidget" name="centralwidget">
+
+  <layout class="QVBoxLayout">
+
+   <!-- 中央区域 -->
+
+   <item>
+
+    <widget class="QSplitter" name="mainSplitter">
+
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+
+     <!-- 左侧任务树 -->
+
+     <widget class="QTreeWidget" name="taskTree">
+      <property name="minimumWidth">
+       <number>200</number>
+      </property>
+      <column>
+       <property name="text">
+        <string>Tasks</string>
+       </property>
+      </column>
+     </widget>
+
+     <!-- 中间模拟器画面 -->
+
+     <widget class="QLabel" name="emulatorView">
+      <property name="minimumWidth">
+       <number>500</number>
+      </property>
+      <property name="styleSheet">
+       <string>background:black;</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+      <property name="text">
+       <string>Emulator Screen</string>
+      </property>
+     </widget>
+
+     <!-- 右侧任务状态 -->
+
+     <widget class="QTableWidget" name="taskStatus">
+      <property name="minimumWidth">
+       <number>200</number>
+      </property>
+     </widget>
+
+    </widget>
+
+   </item>
+
+   <!-- 底部日志 -->
+
+   <item>
+
+    <widget class="QTextEdit" name="logEdit">
+     <property name="minimumHeight">
+      <number>150</number>
+     </property>
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+
+   </item>
+
+  </layout>
+
+ </widget>
+
+ <!-- Toolbar -->
+
+ <widget class="QToolBar" name="toolBar">
+  <property name="windowTitle">
+   <string>ToolBar</string>
+  </property>
+
+  <addaction name="actionStart"/>
+  <addaction name="actionStop"/>
+
+ </widget>
+
+ <addaction name="toolBar"/>
+
+ <!-- Actions -->
+
+ <action name="actionStart">
+  <property name="text">
+   <string>Start</string>
+  </property>
+ </action>
+
+ <action name="actionStop">
+  <property name="text">
+   <string>Stop</string>
+  </property>
+ </action>
+
+</widget>
+
+<resources/>
+<connections/>
+
+</ui>

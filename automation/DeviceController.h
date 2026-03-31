@@ -3,6 +3,9 @@
 
 #include <QObject>
 #include <QString>
+#include <memory>
+
+#include "../config/AdbConfig.h"
 
 /**
  * @brief 设备控制器，负责通过ADB模拟用户操作
@@ -22,8 +25,7 @@ public:
 
     explicit DeviceController(QObject *parent = nullptr);
 
-    void setAdbPath(const QString& path);
-    void setIp(const QString& ip);
+    void setConfig(const std::shared_ptr<AdbConfig>& config);
     /**
      * @brief 断开与所有设备的连接
      */
@@ -86,8 +88,7 @@ private:
      */
     bool execAdb(const QStringList& args);
 
-    QString m_adbPath = "adb";
-    QString m_ip = "127.0.0.1:16384";
+    std::shared_ptr<AdbConfig> m_config;
     DeviceType m_deviceType = mumu;
 };
 

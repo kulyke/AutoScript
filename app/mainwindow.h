@@ -2,11 +2,13 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <memory>
 
 #include "screencapture.h"
 #include "devicecontroller.h"
 #include "visionengine.h"
 #include "taskmanager.h"
+#include "../config/AdbConfig.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -46,6 +48,7 @@ private:
     DeviceController* m_device;
     VisionEngine* m_vision;
     TaskManager* m_taskManager;
+    std::shared_ptr<AdbConfig> m_adbConfig;
     
     //当前屏幕截图
     QImage m_currentFrame;

@@ -1,6 +1,7 @@
 ﻿#include "VisionEngine.h"
 
 #include <QDebug>
+#include <QDir>
 
 VisionEngine::VisionEngine(QObject *parent)
     : QObject(parent)
@@ -26,7 +27,13 @@ cv::Mat VisionEngine::QImageToMat(const QImage &img)
 bool VisionEngine::findTemplate(const QImage& screen, const QString& templatePath, QPoint& pt, double threshold)
 {
     cv::Mat screenMat = QImageToMat(screen);
+    if (screenMat.empty()) {
+        qDebug() << "screen.isNull=" << screen.isNull() << " size=" << screen.size();
+    }
+
     // 加载模板图像
+    // qDebug() << "templatePath=" << templatePath;
+    // qDebug() << "cwd=" << QDir::currentPath();
     cv::Mat tpl = cv::imread(templatePath.toStdString());
     if(tpl.empty()) {
         qDebug()<<"template load failed";

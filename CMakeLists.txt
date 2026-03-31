@@ -15,9 +15,14 @@ set(CMAKE_AUTORCC ON)
 find_package(Qt5 COMPONENTS Widgets Network REQUIRED)
 
 # OpenCV
-include_directories("F:/Qt/Project/sevision/3rd/opencv/include")
-include_directories("F:/Qt/Project/sevision/3rd/opencv/include/opencv2")
-link_directories("F:/Qt/Project/sevision/3rd/opencv/lib")
+set(OPENCV_ROOT "F:/Qt/Project/sevision/3rd/opencv")
+set(OPENCV_INCLUDE_DIR "${OPENCV_ROOT}/include")
+set(OPENCV_LIB_DIR "${OPENCV_ROOT}/lib")
+set(OPENCV_BIN_DIR "${OPENCV_ROOT}/bin")
+
+include_directories("${OPENCV_INCLUDE_DIR}")
+include_directories("${OPENCV_INCLUDE_DIR}/opencv2")
+link_directories("${OPENCV_LIB_DIR}")
 
 # 源码目录
 set(SRC_DIR
@@ -59,11 +64,14 @@ target_include_directories(${PROJECT_NAME}
     vision
     tasks
     utils
+    config
 )
 
 # 链接库
 set(OpenCV_LIBS_DEBUG opencv_world451d)
 set(OpenCV_LIBS_RELEASE opencv_world451)
+set(OpenCV_DLL_DEBUG "${OPENCV_BIN_DIR}/opencv_world451d.dll")
+set(OpenCV_DLL_RELEASE "${OPENCV_BIN_DIR}/opencv_world451.dll")
 
 target_link_libraries(${PROJECT_NAME}
     Qt5::Widgets
@@ -73,9 +81,32 @@ target_link_libraries(${PROJECT_NAME}
     optimized ${OpenCV_LIBS_RELEASE}
 )
 
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/resources/templates"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/resources/templates"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/resources/templates"
+    COMMENT "Copy template resources to output directory"
+)
+
 # Windows 特殊设置
 if(WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES
         WIN32_EXECUTABLE true
+    )
+
+    if(NOT EXISTS "${OpenCV_DLL_DEBUG}")
+        message(WARNING "OpenCV debug DLL not found: ${OpenCV_DLL_DEBUG}")
+    endif()
+    if(NOT EXISTS "${OpenCV_DLL_RELEASE}")
+        message(WARNING "OpenCV release DLL not found: ${OpenCV_DLL_RELEASE}")
+    endif()
+
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<$<CONFIG:Debug>:${OpenCV_DLL_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${OpenCV_DLL_RELEASE}>"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        COMMENT "Copy OpenCV runtime DLL to output directory"
     )
 endif()

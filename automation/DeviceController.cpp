@@ -4,26 +4,23 @@
 #include <QDebug>
 
 DeviceController::DeviceController(QObject *parent)
-    : QObject(parent)
+    : QObject(parent), m_config(std::make_shared<AdbConfig>())
 {
 
 }
 
-void DeviceController::setAdbPath(const QString& path)
+void DeviceController::setConfig(const std::shared_ptr<AdbConfig>& config)
 {
-    m_adbPath = path;
-}
-
-void DeviceController::setIp(const QString &ip)
-{
-    m_ip = ip;
+    if (config) {
+        m_config = config;
+    }
 }
 
 bool DeviceController::execAdb(const QStringList& args)
 {
     QProcess adb;
 
-    adb.start(m_adbPath, args);
+    adb.start(m_config->adbPath, args);
     if(!adb.waitForFinished(3000)) {
         emit actionError("ADB timeout");
         return false;
@@ -45,26 +42,28 @@ void DeviceController::disconnectAll()
 
 void DeviceController::disconnect()
 {
-    if (m_ip.isEmpty()) {
+    if (m_config->ip.isEmpty()) {
         emit actionError("IP is empty");    
     } else {
-        execAdb({"disconnect", m_ip});
+        execAdb({"disconnect", m_config->ip});
     }
 }
 
 void DeviceController::connect()
 {
-    if (m_ip.isEmpty()) {
+    if (m_config->ip.isEmpty()) {
         emit actionError("IP is empty"); 
     } else {
-        execAdb({"connect", m_ip});
+        execAdb({"connect", m_config->ip});
     }
 }
 
 bool DeviceController::tap(int x,int y)
 {
     QStringList args;
-    args << "shell"
+    args << "-s" 
+         << m_config->ip
+         << "shell"
          << "input"
          << "tap"
          << QString::number(x)
@@ -80,7 +79,9 @@ bool DeviceController::tap(int x,int y)
 bool DeviceController::swipe(int x1,int y1,int x2,int y2,int duration)
 {
     QStringList args;
-    args << "shell"
+    args << "-s"
+         << m_config->ip
+         << "shell"
          << "input"
          << "swipe"
          << QString::number(x1)
@@ -101,7 +102,9 @@ bool DeviceController::swipe(int x1,int y1,int x2,int y2,int duration)
 bool DeviceController::keyEvent(int key)
 {
     QStringList args;
-    args << "shell"
+    args << "-s"
+         << m_config->ip
+         << "shell"
          << "input"
          << "keyevent"
          << QString::number(key);
@@ -117,7 +120,9 @@ bool DeviceController::keyEvent(int key)
 bool DeviceController::inputText(const QString& text)
 {
     QStringList args;
-    args << "shell"
+    args << "-s"
+         << m_config->ip
+         << "shell"
          << "input"
          << "text"
          << text;

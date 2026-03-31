@@ -29,8 +29,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionStop,&QAction::triggered,
             this,&MainWindow::onStop);
 
+    m_adbConfig = std::make_shared<AdbConfig>();
+
     /* Screen Capture */
     m_capture = new ScreenCapture(this);
+    m_capture->setConfig(m_adbConfig);
     connect(m_capture, &ScreenCapture::frameReady,this,
         [this](const QImage& img)->void {//更新当前帧并显示在界面上
             m_currentFrame = img;
@@ -46,6 +49,7 @@ MainWindow::MainWindow(QWidget *parent)
         
     /* Device Controller */
     m_device = new DeviceController(this);
+    m_device->setConfig(m_adbConfig);
     connect(m_device, &DeviceController::actionExecuted,this,
         [this](const QString& action)->void {
             appendLog(action);
@@ -203,7 +207,7 @@ void MainWindow::onStart()
     m_device->connect();
 
     appendLog("Start capture");
-    m_capture->start(500);
+    m_capture->start(200);
 
     // appendLog("Task started");
     // m_taskManager->start();
@@ -211,22 +215,30 @@ void MainWindow::onStart()
     //测试模拟器点击
     // m_device->tap(500,500);
 
-    //测试视觉引擎在当前屏幕截图中查找商店按钮
-    // appendLog("Find shop button");
-    // QPoint pt;
-    // bool found = m_vision->findTemplate(
-    //             m_currentFrame,
-    //             "templates/shop.png",
-    //             pt,
-    //             0.9
-    //             );
-    // if(found) {
-    //     appendLog(QString("Shop button found (%1,%2)").arg(pt.x()).arg(pt.y()));
-    //     m_device->tap(pt.x(),pt.y());
-    // } 
-    // else {
-    //     appendLog("Shop button not found");
-    // }
+    // 首帧到达后再执行模板匹配，避免 m_currentFrame 为空
+    QMetaObject::Connection* oneShotConn = new QMetaObject::Connection;
+    *oneShotConn = connect(m_capture, &ScreenCapture::frameReady,
+                           this,
+                           [this, oneShotConn](const QImage& img)->void {
+        QObject::disconnect(*oneShotConn);
+        delete oneShotConn;
+
+        appendLog("Find shop button");
+        QPoint pt;
+        bool found = m_vision->findTemplate(
+                    img,
+                    "resources/templates/shop.png",
+                    pt,
+                    0.9
+                    );
+        if(found) {
+            appendLog(QString("Shop button found (%1,%2)").arg(pt.x()).arg(pt.y()));
+            m_device->tap(pt.x(),pt.y());
+        }
+        else {
+            appendLog("Shop button not found");
+        }
+    });
     
 }
 

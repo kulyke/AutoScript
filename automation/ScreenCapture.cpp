@@ -7,12 +7,19 @@ const QByteArray kPngSignature("\x89PNG\r\n\x1A\n", 8);
 }
 
 ScreenCapture::ScreenCapture(QObject *parent)
-    : QObject(parent)
+    : QObject(parent), m_config(std::make_shared<AdbConfig>())
 {
     connect(&m_timer,
             &QTimer::timeout,
             this,
             &ScreenCapture::captureOnce);
+}
+
+void ScreenCapture::setConfig(const std::shared_ptr<AdbConfig> &config)
+{
+    if (config) {
+        m_config = config;
+    }
 }
 
 void ScreenCapture::start(int intervalMs)
@@ -27,14 +34,14 @@ void ScreenCapture::stop()
 
 void ScreenCapture::captureOnce()
 {
-    if (m_ip.isEmpty()) {
+    if (m_config->ip.isEmpty()) {
         emit captureError("IP is empty");
         return;
     }
     QProcess adb;
     QStringList args;
-    args << "-s" << m_ip << "exec-out" << "screencap" << "-p";
-    adb.start(m_adbPath, args);
+    args << "-s" << m_config->ip << "exec-out" << "screencap" << "-p";
+    adb.start(m_config->adbPath, args);
     if(!adb.waitForStarted(1000)) {
         emit captureError("Failed to start ADB");
         return;
@@ -57,6 +64,7 @@ void ScreenCapture::captureOnce()
         return;
     }
 
+    //读取PNG数据
     QByteArray data = adb.readAllStandardOutput();
     if(data.isEmpty()) {
         emit captureError("Empty screenshot data");
@@ -73,6 +81,7 @@ void ScreenCapture::captureOnce()
         data = data.mid(pngStart);
     }
 
+    //解码PNG数据为QImage
     QImage img;
     if(!img.loadFromData(data,"PNG")) {
         emit captureError("Failed to decode image (corrupted PNG data)");

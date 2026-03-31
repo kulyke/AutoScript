@@ -6,5 +6,5 @@
 
     "cmake.configureOnOpen": true,
 
-    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.buildDirectory": "${workspaceFolder}/build"
 }

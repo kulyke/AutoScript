@@ -9,6 +9,7 @@ const QByteArray kPngSignature("\x89PNG\r\n\x1A\n", 8);
 ScreenCapture::ScreenCapture(QObject *parent)
     : QObject(parent), m_config(std::make_shared<AdbConfig>())
 {
+    m_timer.setParent(this);
     connect(&m_timer,
             &QTimer::timeout,
             this,

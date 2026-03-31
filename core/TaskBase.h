@@ -30,7 +30,7 @@ public:
         NG          //失败
     };
     explicit TaskBase(QObject *parent = nullptr);
-    ~TaskBase() override = default;
+    ~TaskBase() override;
     /**
      * @brief 设置任务状态
      * @param status 任务状态
@@ -47,6 +47,15 @@ public:
      */
     void setInitialState(TaskState* state);
     /**
+     * @brief 设置状态超时阈值（连续无进展帧数）
+     */
+    void setMaxStallFrames(int frames) { m_maxStallFrames = frames > 0 ? frames : 1; }
+    /**
+     * @brief 获取状态超时阈值
+     * @return 状态超时阈值
+     */
+    int maxStallFrames() const { return m_maxStallFrames; }
+    /**
      * @brief 执行任务
      * @param frame 当前屏幕截图
      */
@@ -61,6 +70,8 @@ protected:
     TaskState* m_currentState = nullptr;
 
     TaskStatus m_status = Idle; //默认状态为空闲
+    int m_stallFrames = 0;       //连续无状态进展帧数
+    int m_maxStallFrames = 10;   //超过后判定 NG
 };
 
 #endif

@@ -28,7 +28,7 @@ TaskState* StMainMenuToShop::update(const QImage &frame)
     QPoint pt;
     bool found = m_vision->findTemplate(
                 frame,
-                "templates/shop_button.png",
+                "resources/templates/shop_button.png",
                 pt,
                 0.9);
 
@@ -36,7 +36,7 @@ TaskState* StMainMenuToShop::update(const QImage &frame)
     {
         m_device->tap(pt.x(),pt.y());
         // 进入商店状态
-        return new StShop(m_vision,m_device,this);
+        return new StShop(m_vision,m_device);
     }
 
     return this;

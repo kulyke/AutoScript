@@ -45,9 +45,9 @@ foreach(dir ${SRC_DIR})
 endforeach()
 
 # 资源文件
-# file(GLOB_RECURSE RESOURCES
-#     resources/*.qrc
-# )
+file(GLOB_RECURSE RESOURCES
+    resources/*.qrc
+)
 
 # 可执行程序
 add_executable(${PROJECT_NAME}

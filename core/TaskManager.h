@@ -5,6 +5,7 @@
 // #include <QList>
 #include <QQueue>
 #include <QImage>
+#include <QElapsedTimer>
 
 class TaskBase;
 /**
@@ -16,6 +17,7 @@ class TaskManager : public QObject
     Q_OBJECT
 public:
     explicit TaskManager(QObject *parent = nullptr);
+    ~TaskManager() override;
     /**
      * @brief 添加任务
      * @param task 任务指针
@@ -26,6 +28,11 @@ public:
      * @param task 任务指针
      */
     void removeTask(TaskBase* task);
+    /**
+     * @brief 通过任务名称移除任务
+     * @param taskName 任务名称
+     */
+    void removeTaskByName(const QString& taskName);
     /**
      * @brief 获取所有任务
      * @return 任务列表
@@ -61,6 +68,9 @@ private:
     // QList<TaskBase*> m_tasks;//正在执行&等待的任务列表
     QQueue<TaskBase*> m_tasks;//任务队列，按照优先级排序
     bool m_running = false;
+    bool m_processingFrame = false; //是否正在处理当前帧，防止重入
+    int m_minFrameIntervalMs = 120; //最小帧间隔，单位毫秒，过快时会丢帧以降低状态机驱动频率
+    QElapsedTimer m_frameTimer; //帧计时器，用于控制帧率
     TaskBase* m_currentTask = nullptr; //当前正在执行的任务
 
 };

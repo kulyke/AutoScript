@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QThread>
 #include <memory>
 
 #include "screencapture.h"
@@ -48,7 +49,9 @@ private:
     DeviceController* m_device;
     VisionEngine* m_vision;
     TaskManager* m_taskManager;
+    
     std::shared_ptr<AdbConfig> m_adbConfig;
+    QThread* m_taskThread;//任务线程，承载截图、视觉和任务调度，避免阻塞 UI
     
     //当前屏幕截图
     QImage m_currentFrame;

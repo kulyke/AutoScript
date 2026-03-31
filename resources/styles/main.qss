@@ -1,0 +1,125 @@
+QMainWindow {
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #f4f8fb, stop:1 #e8eef5);
+	color: #1f2a37;
+	font-family: "Segoe UI", "Microsoft YaHei UI";
+	font-size: 13px;
+}
+
+QToolBar {
+	background: #ffffff;
+	border: none;
+	border-bottom: 1px solid #d6dee8;
+	spacing: 8px;
+	padding: 6px 10px;
+}
+
+QToolBar QToolButton {
+	background: #eef4fb;
+	border: 1px solid #cfdae7;
+	border-radius: 7px;
+	padding: 5px 12px;
+	font-weight: 600;
+	color: #1d3557;
+}
+
+QToolBar QToolButton:hover {
+	background: #dce9f9;
+	border-color: #9dbde3;
+}
+
+QToolBar QToolButton:pressed {
+	background: #c9dcf5;
+}
+
+QSplitter::handle {
+	background: #d5dfeb;
+	width: 3px;
+	height: 3px;
+}
+
+QTreeWidget,
+QTableWidget,
+QTextEdit,
+QLabel#emulatorView {
+	background: #ffffff;
+	border: 1px solid #d4dde8;
+	border-radius: 10px;
+}
+
+QTreeWidget,
+QTableWidget,
+QTextEdit {
+	selection-background-color: #dbeafe;
+	selection-color: #0b3a75;
+	gridline-color: #edf2f7;
+}
+
+QTreeWidget::item,
+QTableWidget::item {
+	padding: 4px;
+}
+
+QTreeWidget::item:selected,
+QTableWidget::item:selected {
+	border-radius: 6px;
+}
+
+QHeaderView::section {
+	background: #eff4fa;
+	color: #2f4058;
+	border: none;
+	border-right: 1px solid #dce5ef;
+	border-bottom: 1px solid #dce5ef;
+	padding: 6px 8px;
+	font-weight: 600;
+}
+
+QLabel#emulatorView {
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0f1720, stop:1 #1f2a36);
+	color: #9fb3c8;
+	font-size: 15px;
+	letter-spacing: 1px;
+}
+
+QTextEdit {
+	background: #0f1720;
+	color: #cbd5e1;
+	border: 1px solid #243244;
+	font-family: "Consolas", "Cascadia Mono";
+}
+
+QScrollBar:vertical,
+QScrollBar:horizontal {
+	background: transparent;
+	border: none;
+	margin: 2px;
+}
+
+QScrollBar:vertical {
+	width: 10px;
+}
+
+QScrollBar:horizontal {
+	height: 10px;
+}
+
+QScrollBar::handle:vertical,
+QScrollBar::handle:horizontal {
+	background: #b3c2d6;
+	border-radius: 5px;
+	min-height: 24px;
+	min-width: 24px;
+}
+
+QScrollBar::handle:vertical:hover,
+QScrollBar::handle:horizontal:hover {
+	background: #8ea6c4;
+}
+
+QScrollBar::add-line,
+QScrollBar::sub-line,
+QScrollBar::add-page,
+QScrollBar::sub-page {
+	background: transparent;
+	border: none;
+}

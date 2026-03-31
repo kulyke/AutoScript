@@ -6,7 +6,7 @@
 struct AdbConfig
 {
     QString adbPath = "adb";
-    QString ip = "127.0.0.1:16384";
+    QString ip = "127.0.0.1:16385";
 };
 
 #endif

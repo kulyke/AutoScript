@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/${workspaceFolderBasename}.exe",
             "cwd": "${workspaceFolder}",
-            "stopAtEntry": false,
+            "stopAtEntry": false
         }
     ]
 }

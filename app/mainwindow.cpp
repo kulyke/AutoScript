@@ -6,6 +6,8 @@
 #include <QHeaderView>
 #include <QDebug>
 #include <QMessageBox>
+#include <QMetaObject>
+#include <QFile>
 
 #include "shoptask.h"
 
@@ -19,9 +21,12 @@ MainWindow::MainWindow(QWidget *parent)
     m_emulatorView = ui->emulatorView;
     m_taskStatus = ui->taskStatus;
     m_logEdit = ui->logEdit;
+
+    m_adbConfig = std::make_shared<AdbConfig>();
+    m_taskThread = new QThread(this);
     
     createUI();
-
+    
     /* Toolbar */
     connect(ui->actionStart,&QAction::triggered,
             this,&MainWindow::onStart);
@@ -29,14 +34,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionStop,&QAction::triggered,
             this,&MainWindow::onStop);
 
-    m_adbConfig = std::make_shared<AdbConfig>();
-
     /* Screen Capture */
-    m_capture = new ScreenCapture(this);
+    m_capture = new ScreenCapture();
     m_capture->setConfig(m_adbConfig);
+    m_capture->moveToThread(m_taskThread);
+    connect(m_taskThread, &QThread::finished,
+            m_capture, &QObject::deleteLater);
     connect(m_capture, &ScreenCapture::frameReady,this,
         [this](const QImage& img)->void {//更新当前帧并显示在界面上
-            m_currentFrame = img;
+
             ui->emulatorView->setPixmap(QPixmap::fromImage(img)
                 .scaled(ui->emulatorView->size(),
                         Qt::KeepAspectRatio,
@@ -48,8 +54,11 @@ MainWindow::MainWindow(QWidget *parent)
         });
         
     /* Device Controller */
-    m_device = new DeviceController(this);
+    m_device = new DeviceController();
     m_device->setConfig(m_adbConfig);
+    m_device->moveToThread(m_taskThread);
+    connect(m_taskThread, &QThread::finished,
+            m_device, &QObject::deleteLater);
     connect(m_device, &DeviceController::actionExecuted,this,
         [this](const QString& action)->void {
             appendLog(action);
@@ -60,10 +69,16 @@ MainWindow::MainWindow(QWidget *parent)
         });
 
     /* Vision Engine */
-    m_vision = new VisionEngine(this);
+    m_vision = new VisionEngine();
+    m_vision->moveToThread(m_taskThread);
+    connect(m_taskThread, &QThread::finished,
+            m_vision, &QObject::deleteLater);
 
     /* Task Manager */
-    m_taskManager = new TaskManager(this);
+    m_taskManager = new TaskManager();
+    m_taskManager->moveToThread(m_taskThread);
+    connect(m_taskThread, &QThread::finished,
+            m_taskManager, &QObject::deleteLater);
     connect(m_taskManager, &TaskManager::logMessage,this,
         [this](const QString& msg)->void {
             appendLog(msg);
@@ -71,12 +86,29 @@ MainWindow::MainWindow(QWidget *parent)
 
     /* 连接屏幕捕获器和任务管理器，使得每当有新帧时，任务管理器都能收到并处理 */
     connect(m_capture, &ScreenCapture::frameReady,
-            m_taskManager, &TaskManager::onFrameReady);
+            m_taskManager, &TaskManager::onFrameReady,
+            Qt::QueuedConnection);
+
+    //启动任务管理器线程
+    m_taskThread->start();
 
 }
 
 MainWindow::~MainWindow()
 {
+    if (m_taskManager) {
+        QMetaObject::invokeMethod(m_taskManager,
+                                  [this]() {
+                                      m_taskManager->stop();
+                                      m_capture->stop();
+                                  },
+                                  Qt::BlockingQueuedConnection);
+    }
+    if (m_taskThread) {
+        m_taskThread->quit();
+        m_taskThread->wait();
+    }
+
     delete ui;
 }
 
@@ -84,8 +116,16 @@ void MainWindow::createUI()
 {
     this->setFixedSize(1248, 768);
 
+    QFile qssFile(":/styles/main.qss");
+    if (qssFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        this->setStyleSheet(QString::fromUtf8(qssFile.readAll()));
+        qssFile.close();
+    }
+
+    ui->toolBar->setMovable(false);
+
     ui->vboxLayout->setStretch(0, 3);
-    ui->vboxLayout->setStretch(0, 1);
+    ui->vboxLayout->setStretch(1, 1);
 
     /* 初始化任务树 */
     //活动
@@ -133,11 +173,15 @@ void MainWindow::createUI()
                     appendLog(QString("Task '%1' already exists").arg(taskName));
                     return;
                 }
-                //创建一个商店任务并添加到任务管理器
-                ShopTask* task = new ShopTask();
-                TaskState* state = new StMainMenuToShop(m_vision,m_device,task);
-                task->setInitialState(state);
-                m_taskManager->addTask(task);
+                //在任务线程中创建并添加任务，避免跨线程 moveToThread 警告
+                QMetaObject::invokeMethod(m_taskManager,
+                                          [this]() {
+                                              ShopTask* task = new ShopTask();
+                                              TaskState* state = new StMainMenuToShop(m_vision, m_device);
+                                              task->setInitialState(state);
+                                              m_taskManager->addTask(task);
+                                          },
+                                          Qt::QueuedConnection);
 
                 //更新table_taskStatus显示
                 m_taskStatus->insertRow(m_taskStatus->rowCount());
@@ -185,15 +229,10 @@ void MainWindow::createUI()
             }
             //获取任务名称
             QString taskName = m_taskStatus->item(row,0)->text();
-            //找到任务管理器中对应的任务并移除
-            for(TaskBase* task : m_taskManager->tasks()) {
-                //"ShopTask"->"Shop"
-                if(task->name().contains(taskName)) {
-                    m_taskManager->removeTask(task);
-                    appendLog(QString("Task '%1' removed").arg(taskName));
-                    break;
-                }
-            }
+            QMetaObject::invokeMethod(m_taskManager,
+                                      [this, taskName]() { m_taskManager->removeTaskByName(taskName); },
+                                      Qt::QueuedConnection);
+            appendLog(QString("Task '%1' removed").arg(taskName));
             //从状态表中移除对应行
             m_taskStatus->removeRow(row);
         });
@@ -203,52 +242,54 @@ void MainWindow::createUI()
 void MainWindow::onStart()
 {
     appendLog("Connecting to device");
-    m_device->disconnect();
-    m_device->connect();
-
     appendLog("Start capture");
-    m_capture->start(200);
+    appendLog("Task started");
+    QMetaObject::invokeMethod(m_taskManager,
+                              [this]() {
+                                  m_device->disconnect();
+                                  m_device->connect();
+                                  m_capture->start(50);
+                                  m_taskManager->start();
+                              },
+                              Qt::QueuedConnection);
 
-    // appendLog("Task started");
-    // m_taskManager->start();
+    // 测试：首帧到达后再执行模板匹配，避免 m_currentFrame 为空
+    // QMetaObject::Connection* oneShotConn = new QMetaObject::Connection;
+    // *oneShotConn = connect(m_capture, &ScreenCapture::frameReady,
+    //                        this,
+    //                        [this, oneShotConn](const QImage& img)->void {
+    //     QObject::disconnect(*oneShotConn);
+    //     delete oneShotConn;
 
-    //测试模拟器点击
-    // m_device->tap(500,500);
-
-    // 首帧到达后再执行模板匹配，避免 m_currentFrame 为空
-    QMetaObject::Connection* oneShotConn = new QMetaObject::Connection;
-    *oneShotConn = connect(m_capture, &ScreenCapture::frameReady,
-                           this,
-                           [this, oneShotConn](const QImage& img)->void {
-        QObject::disconnect(*oneShotConn);
-        delete oneShotConn;
-
-        appendLog("Find shop button");
-        QPoint pt;
-        bool found = m_vision->findTemplate(
-                    img,
-                    "resources/templates/shop.png",
-                    pt,
-                    0.9
-                    );
-        if(found) {
-            appendLog(QString("Shop button found (%1,%2)").arg(pt.x()).arg(pt.y()));
-            m_device->tap(pt.x(),pt.y());
-        }
-        else {
-            appendLog("Shop button not found");
-        }
-    });
+    //     appendLog("Find shop button");
+    //     QPoint pt;
+    //     bool found = m_vision->findTemplate(
+    //                 img,
+    //                 "resources/templates/shop_button.png",
+    //                 pt,
+    //                 0.9
+    //                 );
+    //     if(found) {
+    //         appendLog(QString("Shop button found (%1,%2)").arg(pt.x()).arg(pt.y()));
+    //         m_device->tap(pt.x(),pt.y());
+    //     }
+    //     else {
+    //         appendLog("Shop button not found");
+    //     }
+    // });
     
 }
 
 void MainWindow::onStop()
 {
-    // appendLog("Task stopped");
-    // m_taskManager->stop();
-
+    appendLog("Task stopped");
     appendLog("Stop capture");
-    m_capture->stop();
+    QMetaObject::invokeMethod(m_taskManager,
+                              [this]() {
+                                  m_taskManager->stop();
+                                  m_capture->stop();
+                              },
+                              Qt::QueuedConnection);
 }
 
 void MainWindow::appendLog(const QString &msg)

@@ -27,13 +27,14 @@ TaskState* StShop::update(const QImage &frame)
     QPoint pt;
     bool found = m_vision->findTemplate(
                 frame,
-                "templates/shop_title.png",
+                "resources/templates/shop_title.png",
                 pt,
                 0.9);
 
     if(found)
     {
         // 已经进入商店,结束任务(后续扩展为从商店购买物品)
+        qDebug()<<"Entered shop, task completed";
         return nullptr;
     }
 

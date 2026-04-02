@@ -2,14 +2,28 @@
 #include "visionengine.h"
 #include "devicecontroller.h"
 #include "stshop.h"
+#include "steps/TemplateSteps.h"
 
 #include <QDebug>
+#include <memory>
 
 StMainMenuToShop::StMainMenuToShop(VisionEngine *vision, DeviceController *device, QObject *parent)
-    : TaskState(parent)
+    : StepFlowState(parent)
 {
     m_vision = vision;
     m_device = device;
+
+    addStep(std::make_unique<TimeoutStep>(
+        std::make_unique<ClickTemplateStep>(
+            m_vision,
+            m_device,
+            "resources/templates/shop_button.png",
+            0.9,
+            "Click shop button"),
+        10,
+        "Timeout click shop button"));
+
+    addStep(std::make_unique<DelayFramesStep>(8, "Wait page transition"));
 }
 
 StMainMenuToShop::~StMainMenuToShop()
@@ -22,22 +36,7 @@ QString StMainMenuToShop::name() const
     return "StMainMenuToShop";
 }
 
-TaskState* StMainMenuToShop::update(const QImage &frame)
+TaskState* StMainMenuToShop::onFlowFinished()
 {
-    //在主界面寻找商店按钮
-    QPoint pt;
-    bool found = m_vision->findTemplate(
-                frame,
-                "resources/templates/shop_button.png",
-                pt,
-                0.9);
-
-    if(found)
-    {
-        m_device->tap(pt.x(),pt.y());
-        // 进入商店状态
-        return new StShop(m_vision,m_device);
-    }
-
-    return this;
+    return new StShop(m_vision, m_device);
 }

@@ -30,11 +30,27 @@ public:
 
     void createUI();
 
+protected:
+    void resizeEvent(QResizeEvent *event) override;
+
 private slots:
 
     void onStart();
     void onStop();
     void appendLog(const QString& msg);
+    void onTaskStatusChanged(const QString& taskName,
+                             const QString& statusText,
+                             const QString& stateName);
+    void onTaskFinished(const QString& taskName,
+                        const QString& finalStatus);
+
+private:
+    void refreshEmulatorView();
+    int findTaskStatusRow(const QString& taskName) const;
+    void setTaskStatusRow(const QString& taskName,
+                          const QString& statusText,
+                          const QString& stateName);
+    void removeTaskStatusRow(const QString& taskName);
 
 private:
     Ui::MainWindow *ui;

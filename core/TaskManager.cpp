@@ -2,6 +2,27 @@
 #include "taskbase.h"
 #include <QThread>
 
+namespace {
+
+QString taskStatusToText(TaskBase::TaskStatus status)
+{
+    switch (status) {
+    case TaskBase::Idle:
+        return "Idle";
+    case TaskBase::Waiting:
+        return "Waiting";
+    case TaskBase::Running:
+        return "Running";
+    case TaskBase::OK:
+        return "OK";
+    case TaskBase::NG:
+        return "NG";
+    }
+    return "Unknown";
+}
+
+}
+
 
 TaskManager::TaskManager(QObject *parent)
     : QObject(parent)
@@ -31,11 +52,13 @@ void TaskManager::addTask(TaskBase *task)
     m_tasks.append(task);
     //更新当前任务
     m_currentTask = m_tasks.isEmpty() ? nullptr : m_tasks.head();
+    emit taskStatusChanged(task->name(), taskStatusToText(task->status()), task->currentStateName());
 }
 
 void TaskManager::removeTask(TaskBase *task)
 {
     if (m_tasks.contains(task)) {
+        const QString removedName = task->name();
         const bool wasCurrent = (task == m_currentTask);
         m_tasks.removeOne(task);
         delete task;
@@ -45,6 +68,8 @@ void TaskManager::removeTask(TaskBase *task)
         if (wasCurrent) {
             m_currentTask = m_tasks.isEmpty() ? nullptr : m_tasks.head();
         }
+
+        emit taskFinished(removedName, "Removed");
     } else {
         emit logMessage("Task not found in TaskManager");
     }
@@ -98,7 +123,11 @@ void TaskManager::onFrameReady(const QImage &frame)
     m_processingFrame = true;
 
     if (m_currentTask) {
+        const QString taskName = m_currentTask->name();
         m_currentTask->execute(frame);
+        emit taskStatusChanged(taskName,
+                               taskStatusToText(m_currentTask->status()),
+                               m_currentTask->currentStateName());
         if(m_currentTask->status() == TaskBase::OK) {
             TaskBase* task = m_tasks.dequeue(); //任务完成，从队列中移除
             delete task;
@@ -106,15 +135,27 @@ void TaskManager::onFrameReady(const QImage &frame)
 
             //更新当前任务 
             m_currentTask = m_tasks.isEmpty() ? nullptr : m_tasks.head();
+            emit taskFinished(taskName, "OK");
         } else if (m_currentTask->status() == TaskBase::NG) {
             const QString failedName = m_currentTask->name();
+            const QString failedState = m_currentTask->currentStateName();
+            const QString failedReason = m_currentTask->failureReason();
             TaskBase* failedTask = m_tasks.dequeue();
             delete failedTask;
             failedTask = nullptr;
 
             m_currentTask = m_tasks.isEmpty() ? nullptr : m_tasks.head();
 
-            emit logMessage(QString("Task '%1' failed").arg(failedName));
+            QString failMessage = QString("Task '%1' failed").arg(failedName);
+            if (!failedState.isEmpty()) {
+                failMessage += QString(" in state '%1'").arg(failedState);
+            }
+            if (!failedReason.isEmpty()) {
+                failMessage += QString(": %1").arg(failedReason);
+            }
+
+            emit logMessage(failMessage);
+            emit taskFinished(failedName, "NG");
             //任务失败，停止整个任务管理器
             stop();
         }

@@ -1,12 +1,12 @@
 ﻿#ifndef STMAINMENUTOSHOP_H
 #define STMAINMENUTOSHOP_H
 
-#include "taskstate.h"
+#include "StepFlowState.h"
 
 class VisionEngine;
 class DeviceController;
 
-class StMainMenuToShop : public TaskState
+class StMainMenuToShop : public StepFlowState
 {
 public:
     StMainMenuToShop(VisionEngine* vision,
@@ -15,9 +15,9 @@ public:
 
     QString name() const override;
 
-    TaskState* update(const QImage& frame) override;
-
 private:
+    TaskState* onFlowFinished() override;
+
     VisionEngine* m_vision;
     DeviceController* m_device;
 

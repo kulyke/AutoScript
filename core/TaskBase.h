@@ -60,6 +60,8 @@ public:
      * @param frame 当前屏幕截图
      */
     void execute(const QImage& frame);
+    QString currentStateName() const;
+    QString failureReason() const;
     /**
      * @brief 获取任务名称
      * @return 任务名称

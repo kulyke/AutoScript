@@ -37,6 +37,8 @@ void TaskBase::execute(const QImage &frame)
         m_currentState = nullptr;
         m_stallFrames = 0;
         m_status = OK;
+    } else if (next == prev && prev->isFailed()) {
+        m_status = NG;
     } else if(next != prev) {
         // 切换到新状态，释放旧状态
         delete prev;
@@ -44,12 +46,26 @@ void TaskBase::execute(const QImage &frame)
         m_stallFrames = 0;
         m_status = Running;
     } else { // next == prev
-        // 状态未变化，先进入等待；持续等待超时判定失败
-        ++m_stallFrames;
-        if (m_stallFrames >= m_maxStallFrames) {
-            m_status = NG;
+        // 状态未变化，先进入等待；部分状态自行管理步骤级超时
+        if (prev->usesExternalTimeout()) {
+            ++m_stallFrames;
+            if (m_stallFrames >= m_maxStallFrames) {
+                m_status = NG;
+            } else {
+                m_status = Waiting;
+            }
         } else {
             m_status = Waiting;
         }
     }
+}
+
+QString TaskBase::currentStateName() const
+{
+    return m_currentState ? m_currentState->name() : QString();
+}
+
+QString TaskBase::failureReason() const
+{
+    return m_currentState ? m_currentState->failureReason() : QString();
 }

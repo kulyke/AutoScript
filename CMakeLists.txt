@@ -36,7 +36,10 @@ set(SRC_DIR
 
 # 收集源文件
 foreach(dir ${SRC_DIR})
+    # 使用 CONFIGURE_DEPENDS 以便在添加/删除源文件时自动触发 CMake 重新配置，
+    # 这在开发阶段更方便，但在超大项目中可能会略微影响配置性能。
     file(GLOB_RECURSE TMP_SRC
+        CONFIGURE_DEPENDS
         ${dir}/*.cpp
         ${dir}/*.h
         ${dir}/*.ui

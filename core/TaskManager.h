@@ -62,6 +62,11 @@ public slots:
 
 signals:
     void logMessage(const QString& msg);
+    void taskStatusChanged(const QString& taskName,
+                           const QString& statusText,
+                           const QString& stateName);
+    void taskFinished(const QString& taskName,
+                      const QString& finalStatus);
 
 private:
     QList<TaskBase*> m_idleTasks;//空闲任务列表

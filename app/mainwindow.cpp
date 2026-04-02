@@ -8,6 +8,8 @@
 #include <QMessageBox>
 #include <QMetaObject>
 #include <QFile>
+#include <QResizeEvent>
+#include <QTimer>
 
 #include "shoptask.h"
 
@@ -16,11 +18,6 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    
-    m_taskTree = ui->taskTree;
-    m_emulatorView = ui->emulatorView;
-    m_taskStatus = ui->taskStatus;
-    m_logEdit = ui->logEdit;
 
     m_adbConfig = std::make_shared<AdbConfig>();
     m_taskThread = new QThread(this);
@@ -42,11 +39,8 @@ MainWindow::MainWindow(QWidget *parent)
             m_capture, &QObject::deleteLater);
     connect(m_capture, &ScreenCapture::frameReady,this,
         [this](const QImage& img)->void {//更新当前帧并显示在界面上
-
-            ui->emulatorView->setPixmap(QPixmap::fromImage(img)
-                .scaled(ui->emulatorView->size(),
-                        Qt::KeepAspectRatio,
-                        Qt::SmoothTransformation));
+            m_currentFrame = img;
+            refreshEmulatorView();
         });
     connect(m_capture, &ScreenCapture::captureError,this,
         [this](const QString& msg)->void {
@@ -83,6 +77,10 @@ MainWindow::MainWindow(QWidget *parent)
         [this](const QString& msg)->void {
             appendLog(msg);
         });
+    connect(m_taskManager, &TaskManager::taskStatusChanged,
+            this, &MainWindow::onTaskStatusChanged);
+    connect(m_taskManager, &TaskManager::taskFinished,
+            this, &MainWindow::onTaskFinished);
 
     /* 连接屏幕捕获器和任务管理器，使得每当有新帧时，任务管理器都能收到并处理 */
     connect(m_capture, &ScreenCapture::frameReady,
@@ -114,7 +112,13 @@ MainWindow::~MainWindow()
 
 void MainWindow::createUI()
 {
-    this->setFixedSize(1248, 768);
+    m_taskTree = ui->taskTree;
+    m_emulatorView = ui->emulatorView;
+    m_taskStatus = ui->taskStatus;
+    m_logEdit = ui->logEdit;
+
+    this->setMinimumSize(1000, 680);
+    this->resize(1248, 768);
 
     QFile qssFile(":/styles/main.qss");
     if (qssFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -123,9 +127,15 @@ void MainWindow::createUI()
     }
 
     ui->toolBar->setMovable(false);
+    ui->mainSplitter->setStretchFactor(0, 0);
+    ui->mainSplitter->setStretchFactor(1, 1);
+    ui->mainSplitter->setStretchFactor(2, 0);
+    ui->mainSplitter->setCollapsible(2, false);
 
     ui->vboxLayout->setStretch(0, 3);
     ui->vboxLayout->setStretch(1, 1);
+
+    m_taskStatus->setMinimumWidth(360);
 
     /* 初始化任务树 */
     //活动
@@ -185,9 +195,18 @@ void MainWindow::createUI()
 
                 //更新table_taskStatus显示
                 m_taskStatus->insertRow(m_taskStatus->rowCount());
-                m_taskStatus->setItem(m_taskStatus->rowCount()-1,0,new QTableWidgetItem(taskName));
-                m_taskStatus->setItem(m_taskStatus->rowCount()-1,1,new QTableWidgetItem("Idle"));
-                m_taskStatus->setItem(m_taskStatus->rowCount()-1,2,new QTableWidgetItem("X"));
+                QTableWidgetItem* taskItem = new QTableWidgetItem(taskName);
+                QTableWidgetItem* statusItem = new QTableWidgetItem("Idle");
+                QTableWidgetItem* stateItem = new QTableWidgetItem("StMainMenuToShop");
+                QTableWidgetItem* closeItem = new QTableWidgetItem("X");
+                taskItem->setTextAlignment(Qt::AlignCenter);
+                statusItem->setTextAlignment(Qt::AlignCenter);
+                stateItem->setTextAlignment(Qt::AlignCenter);
+                closeItem->setTextAlignment(Qt::AlignCenter);
+                m_taskStatus->setItem(m_taskStatus->rowCount()-1,0,taskItem);
+                m_taskStatus->setItem(m_taskStatus->rowCount()-1,1,statusItem);
+                m_taskStatus->setItem(m_taskStatus->rowCount()-1,2,stateItem);
+                m_taskStatus->setItem(m_taskStatus->rowCount()-1,3,closeItem);
 
             } else {
                 appendLog(QString("No task associated with '%1'").arg(taskName));
@@ -195,11 +214,17 @@ void MainWindow::createUI()
         });
 
     /* 初始化状态表 */
-    m_taskStatus->setColumnCount(3);
-    m_taskStatus->setHorizontalHeaderLabels({"Task", "Status", "close"});
-    // 设置列宽自适应内容
-    m_taskStatus->horizontalHeader()->setStretchLastSection(true);
-    m_taskStatus->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    m_taskStatus->setColumnCount(4);
+    // 设置表头标签和对齐方式
+    m_taskStatus->setHorizontalHeaderLabels({"Task", "Status", "State", "Close"});
+    m_taskStatus->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
+    m_taskStatus->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    m_taskStatus->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    m_taskStatus->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+    m_taskStatus->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);
+    m_taskStatus->setColumnWidth(3, 67);
+    
+    m_taskStatus->verticalHeader()->setVisible(false);
 
     m_taskStatus->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_taskStatus->setSelectionBehavior(QAbstractItemView::SelectItems);
@@ -207,6 +232,7 @@ void MainWindow::createUI()
 
     m_taskStatus->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_taskStatus->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+
     //双击状态表的关闭按钮，移除对应任务
     connect(m_taskStatus, &QTableWidget::itemDoubleClicked,
         [this](QTableWidgetItem* item)->void {
@@ -215,7 +241,7 @@ void MainWindow::createUI()
             QString cellText = item->text();
             appendLog(QString("Status table clicked: (%1, %2) '%3'").arg(row).arg(col).arg(cellText));
             //只有点击关闭按钮才触发移除任务
-            if (col!=2) {
+            if (col != 3) {
                 appendLog("Only 'close' column is clickable");
                 return;
             }
@@ -237,6 +263,12 @@ void MainWindow::createUI()
             m_taskStatus->removeRow(row);
         });
 
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    refreshEmulatorView();
 }
 
 void MainWindow::onStart()
@@ -300,4 +332,95 @@ void MainWindow::appendLog(const QString &msg)
     m_logEdit->append(QString("[%1] %2")
                       .arg(time)
                       .arg(msg));
+}
+
+void MainWindow::onTaskStatusChanged(const QString& taskName,
+                                     const QString& statusText,
+                                     const QString& stateName)
+{
+    setTaskStatusRow(taskName, statusText, stateName);
+}
+
+void MainWindow::onTaskFinished(const QString& taskName,
+                                const QString& finalStatus)
+{
+    setTaskStatusRow(taskName, finalStatus, QString());
+
+    if (finalStatus == "Removed") {
+        removeTaskStatusRow(taskName);
+        return;
+    }
+
+    QTimer::singleShot(1200, this, [this, taskName]() {
+        removeTaskStatusRow(taskName);
+    });
+}
+
+int MainWindow::findTaskStatusRow(const QString& taskName) const
+{
+    for (int row = 0; row < m_taskStatus->rowCount(); ++row) {
+        QTableWidgetItem* taskItem = m_taskStatus->item(row, 0);
+        if (!taskItem) {
+            continue;
+        }
+
+        const QString existingName = taskItem->text();
+        if (existingName == taskName
+            || existingName.contains(taskName)
+            || taskName.contains(existingName)) {
+            return row;
+        }
+    }
+    return -1;
+}
+
+void MainWindow::setTaskStatusRow(const QString& taskName,
+                                  const QString& statusText,
+                                  const QString& stateName)
+{
+    const int row = findTaskStatusRow(taskName);
+    if (row < 0) {
+        return;
+    }
+
+    QTableWidgetItem* statusItem = m_taskStatus->item(row, 1);
+    if (!statusItem) {
+        statusItem = new QTableWidgetItem();
+        statusItem->setTextAlignment(Qt::AlignCenter);
+        m_taskStatus->setItem(row, 1, statusItem);
+    }
+
+    QTableWidgetItem* stateItem = m_taskStatus->item(row, 2);
+    if (!stateItem) {
+        stateItem = new QTableWidgetItem();
+        stateItem->setTextAlignment(Qt::AlignCenter);
+        m_taskStatus->setItem(row, 2, stateItem);
+    }
+
+    statusItem->setText(statusText);
+    stateItem->setText(stateName);
+    statusItem->setToolTip(stateName.isEmpty()
+                           ? statusText
+                           : QString("%1 / %2").arg(statusText, stateName));
+    stateItem->setToolTip(stateName);
+}
+
+void MainWindow::removeTaskStatusRow(const QString& taskName)
+{
+    const int row = findTaskStatusRow(taskName);
+    if (row >= 0) {
+        m_taskStatus->removeRow(row);
+    }
+}
+
+void MainWindow::refreshEmulatorView()
+{
+    if (m_currentFrame.isNull()) {
+        return;
+    }
+
+    ui->emulatorView->setPixmap(QPixmap::fromImage(m_currentFrame)
+        .scaled(ui->emulatorView->size(),
+                Qt::KeepAspectRatio,
+                Qt::SmoothTransformation));
 }

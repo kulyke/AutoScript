@@ -12,14 +12,17 @@ StShop::StShop(VisionEngine *vision, DeviceController *device, QObject *parent)
     m_vision = vision;
     m_device = device;
 
-    addStep(std::make_unique<TimeoutStep>(
-        std::make_unique<WaitTemplateStep>(
-            m_vision,
-            "resources/templates/shop_title.png",
-            0.9,
-            "Wait shop title"),
-        10,
-        "Timeout wait shop title"));
+    addStep(std::make_unique<RetryStep>(
+        std::make_unique<TimeoutStep>(
+            std::make_unique<WaitTemplateStep>(
+                m_vision,
+                "resources/templates/shop_title.png",
+                0.9,
+                "Wait shop title"),
+            5,
+            "Timeout wait shop title"),
+        1,
+        "Retry wait shop title"));
 }
 
 StShop::~StShop()
@@ -32,8 +35,8 @@ QString StShop::name() const
     return "StShop";
 }
 
-TaskState* StShop::onFlowFinished()
+StepFlowState* StShop::onFlowFinished()
 {
-    qDebug() << "Entered shop, task completed";
+    setRuntimeMessage("[StShop] flow completed: shop page confirmed");
     return nullptr;
 }

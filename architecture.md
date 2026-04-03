@@ -26,14 +26,13 @@
 
 ## core
 
-- `core/TaskState.h`: base interface for all task states.
 - `core/TaskBase.h`: base task type, status definitions, task-level timeout configuration.
-- `core/TaskBase.cpp`: task execution, state transition, task status update, state failure reason exposure.
+- `core/TaskBase.cpp`: task execution, state transition, task status update, state failure reason exposure, and buffered runtime message forwarding across state switches.
 - `core/TaskManager.h`: task queue manager interface.
-- `core/TaskManager.cpp`: task scheduling, frame dispatch, task cleanup, queue control, runtime task status notifications.
+- `core/TaskManager.cpp`: task scheduling, frame dispatch, task cleanup, queue control, runtime task status notifications, and UI log forwarding for step runtime messages.
 - `core/FlowStep.h`: primitive step interface used by step-flow states.
-- `core/StepFlowState.h`: state base class that executes a sequence of steps.
-- `core/StepFlowState.cpp`: step sequence engine, failure propagation, flow completion handling.
+- `core/StepFlowState.h`: the only task state base class, combining state lifecycle hooks and step-flow support.
+- `core/StepFlowState.cpp`: step sequence engine, failure propagation, flow completion handling, and success/failure runtime message capture.
 
 ## tasks
 
@@ -43,14 +42,14 @@
 ## tasks/states
 
 - `tasks/states/StMainMenuToShop.h`: state declaration for entering shop from main menu.
-- `tasks/states/StMainMenuToShop.cpp`: step-flow state that clicks shop button and waits for transition.
+- `tasks/states/StMainMenuToShop.cpp`: step-flow state that retries clicking the shop button and waits for transition.
 - `tasks/states/StShop.h`: state declaration for shop page verification.
-- `tasks/states/StShop.cpp`: step-flow state that waits for shop title and completes task.
+- `tasks/states/StShop.cpp`: step-flow state that retries waiting for the shop title and completes task.
 
 ## tasks/steps
 
 - `tasks/steps/TemplateSteps.h`: reusable template-related steps, fixed device actions, retry wrapper, and timing wrappers.
-- `tasks/steps/TemplateSteps.cpp`: implementations of template wait/click, tap/swipe/keyevent, retry, frame delay, and step timeout.
+- `tasks/steps/TemplateSteps.cpp`: implementations of template wait/click, tap/swipe/keyevent, retry, frame delay, and step timeout, with explicit action failure reporting and retry runtime messages.
 
 ## vision
 
@@ -70,4 +69,11 @@
 
 - UI thread: `MainWindow`, visual rendering, user interaction.
 - worker thread: `ScreenCapture`, `DeviceController`, `VisionEngine`, `TaskManager`.
-- frame flow: `ScreenCapture -> TaskManager -> TaskBase -> TaskState/StepFlowState -> Vision/Device`.
+- frame flow: `ScreenCapture -> TaskManager -> TaskBase -> StepFlowState -> Vision/Device`.
+
+## Current Optimization Focus
+
+- Move business task registration and creation out of `MainWindow` to reduce UI/business coupling.
+- Add a template cache layer above `VisionEngine` to avoid repeated disk reads during frame processing.
+- Replace task name matching in UI and manager code with stable task identifiers for multi-instance business tasks.
+- Fill the empty test layer so the step-flow runtime has regression coverage before business flows multiply.

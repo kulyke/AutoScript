@@ -125,6 +125,10 @@ void TaskManager::onFrameReady(const QImage &frame)
     if (m_currentTask) {
         const QString taskName = m_currentTask->name();
         m_currentTask->execute(frame);
+        const QString runtimeMessage = m_currentTask->takeRuntimeMessage();
+        if (!runtimeMessage.isEmpty()) {
+            emit logMessage(QString("Task '%1' %2").arg(taskName, runtimeMessage));
+        }
         emit taskStatusChanged(taskName,
                                taskStatusToText(m_currentTask->status()),
                                m_currentTask->currentStateName());

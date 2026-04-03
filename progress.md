@@ -21,6 +21,12 @@
 - Added task-level failure logging with state and reason propagation.
 - Synced task table status with runtime task execution state.
 - Showed current state name directly in the task table.
+- Applied `RetryStep` to the current shop entry and shop verification flow.
+- Made click and template steps surface dependency and action failures explicitly.
+- Added step-level retry runtime logging to the UI log path.
+- Removed the redundant `TaskState` abstraction and simplified the state hierarchy to `StepFlowState` only.
+- Added success runtime logging for finished steps and preserved runtime messages across state transitions.
+- Reviewed the framework readiness before business development and identified the next structural optimization targets.
 
 ## Current Flow
 
@@ -34,5 +40,7 @@
 
 ## Next Candidates
 
-- Extract more game flows into step-flow states.
-- Apply `RetryStep` to flows with unstable device or recognition operations.
+- Extract task registration and creation out of `MainWindow` into a task registry or factory.
+- Add template caching and resource metadata before business templates grow.
+- Introduce stable task IDs instead of name-based matching in UI and manager operations.
+- Add non-empty tests for StepFlowState, RetryStep, TimeoutStep, and TaskBase transitions.

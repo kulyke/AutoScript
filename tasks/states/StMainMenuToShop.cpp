@@ -13,15 +13,18 @@ StMainMenuToShop::StMainMenuToShop(VisionEngine *vision, DeviceController *devic
     m_vision = vision;
     m_device = device;
 
-    addStep(std::make_unique<TimeoutStep>(
-        std::make_unique<ClickTemplateStep>(
-            m_vision,
-            m_device,
-            "resources/templates/shop_button.png",
-            0.9,
-            "Click shop button"),
-        10,
-        "Timeout click shop button"));
+    addStep(std::make_unique<RetryStep>(
+        std::make_unique<TimeoutStep>(
+            std::make_unique<ClickTemplateStep>(
+                m_vision,
+                m_device,
+                "resources/templates/shop_button.png",
+                0.9,
+                "Click shop button"),
+            5,
+            "Timeout click shop button"),
+        2,
+        "Retry click shop button"));
 
     addStep(std::make_unique<DelayFramesStep>(8, "Wait page transition"));
 }
@@ -36,7 +39,8 @@ QString StMainMenuToShop::name() const
     return "StMainMenuToShop";
 }
 
-TaskState* StMainMenuToShop::onFlowFinished()
+StepFlowState* StMainMenuToShop::onFlowFinished()
 {
+    setRuntimeMessage("[StMainMenuToShop] transition ready: enter StShop");
     return new StShop(m_vision, m_device);
 }

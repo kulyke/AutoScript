@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QImage>
 
-#include "TaskState.h"
+#include "StepFlowState.h"
 
 class VisionEngine;
 class DeviceController;
@@ -45,7 +45,7 @@ public:
      * @brief 设置初始状态
      * @param state 任务状态
      */
-    void setInitialState(TaskState* state);
+    void setInitialState(StepFlowState* state);
     /**
      * @brief 设置状态超时阈值（连续无进展帧数）
      */
@@ -62,6 +62,7 @@ public:
     void execute(const QImage& frame);
     QString currentStateName() const;
     QString failureReason() const;
+    QString takeRuntimeMessage();
     /**
      * @brief 获取任务名称
      * @return 任务名称
@@ -69,7 +70,8 @@ public:
     virtual QString name() const = 0;
 
 protected:
-    TaskState* m_currentState = nullptr;
+    StepFlowState* m_currentState = nullptr;
+    QString m_runtimeMessage;
 
     TaskStatus m_status = Idle; //默认状态为空闲
     int m_stallFrames = 0;       //连续无状态进展帧数

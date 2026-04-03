@@ -12,9 +12,10 @@ TaskBase::~TaskBase()
     m_currentState = nullptr;
 }
 
-void TaskBase::setInitialState(TaskState *state)
+void TaskBase::setInitialState(StepFlowState *state)
 {
     m_currentState = state;
+    m_runtimeMessage.clear();
     m_stallFrames = 0;
     m_status = Idle;
 }
@@ -28,8 +29,9 @@ void TaskBase::execute(const QImage &frame)
     }
 
     //更新并获取下一个状态
-    TaskState* prev = m_currentState;
-    TaskState* next = m_currentState->update(frame);
+    StepFlowState* prev = m_currentState;
+    StepFlowState* next = m_currentState->update(frame);
+    m_runtimeMessage = prev ? prev->takeRuntimeMessage() : QString();
 
     if(next == nullptr) {
         // 状态返回空，任务完成
@@ -68,4 +70,15 @@ QString TaskBase::currentStateName() const
 QString TaskBase::failureReason() const
 {
     return m_currentState ? m_currentState->failureReason() : QString();
+}
+
+QString TaskBase::takeRuntimeMessage()
+{
+    if (!m_runtimeMessage.isEmpty()) {
+        const QString message = m_runtimeMessage;
+        m_runtimeMessage.clear();
+        return message;
+    }
+
+    return m_currentState ? m_currentState->takeRuntimeMessage() : QString();
 }

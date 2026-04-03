@@ -23,11 +23,23 @@ QString WaitTemplateStep::name() const
 
 FlowStepStatus WaitTemplateStep::execute(const QImage& frame)
 {
+    m_error.clear();
+
+    if (!m_vision) {
+        m_error = "vision is null";
+        return FlowStepStatus::Failed;
+    }
+
     QPoint point;
     if (m_vision->findTemplate(frame, m_templatePath, point, m_threshold)) {
         return FlowStepStatus::Done;
     }
     return FlowStepStatus::Running;
+}
+
+QString WaitTemplateStep::errorString() const
+{
+    return m_error;
 }
 
 ClickTemplateStep::ClickTemplateStep(VisionEngine* vision,
@@ -50,13 +62,36 @@ QString ClickTemplateStep::name() const
 
 FlowStepStatus ClickTemplateStep::execute(const QImage& frame)
 {
+    m_error.clear();
+
+    if (!m_vision) {
+        m_error = "vision is null";
+        return FlowStepStatus::Failed;
+    }
+    if (!m_device) {
+        m_error = "device is null";
+        return FlowStepStatus::Failed;
+    }
+
     QPoint point;
     if (!m_vision->findTemplate(frame, m_templatePath, point, m_threshold)) {
         return FlowStepStatus::Running;
     }
 
-    m_device->tap(point.x(), point.y());
+    if (!m_device->tap(point.x(), point.y())) {
+        m_error = QString("tap (%1,%2) failed for template '%3'")
+            .arg(point.x())
+            .arg(point.y())
+            .arg(m_templatePath);
+        return FlowStepStatus::Failed;
+    }
+
     return FlowStepStatus::Done;
+}
+
+QString ClickTemplateStep::errorString() const
+{
+    return m_error;
 }
 
 TapPointStep::TapPointStep(DeviceController* device,
@@ -76,6 +111,8 @@ QString TapPointStep::name() const
 FlowStepStatus TapPointStep::execute(const QImage& frame)
 {
     Q_UNUSED(frame);
+
+    m_error.clear();
 
     if (!m_device) {
         m_error = "device is null";
@@ -116,6 +153,8 @@ QString SwipeStep::name() const
 FlowStepStatus SwipeStep::execute(const QImage& frame)
 {
     Q_UNUSED(frame);
+
+    m_error.clear();
 
     if (!m_device) {
         m_error = "device is null";
@@ -160,6 +199,8 @@ QString KeyEventStep::name() const
 FlowStepStatus KeyEventStep::execute(const QImage& frame)
 {
     Q_UNUSED(frame);
+
+    m_error.clear();
 
     if (!m_device) {
         m_error = "device is null";
@@ -231,9 +272,21 @@ void TimeoutStep::reset()
 {
     m_elapsedFrames = 0;
     m_error.clear();
+    m_runtimeMessage.clear();
     if (m_innerStep) {
         m_innerStep->reset();
     }
+}
+
+QString TimeoutStep::takeRuntimeMessage()
+{
+    if (!m_runtimeMessage.isEmpty()) {
+        const QString message = m_runtimeMessage;
+        m_runtimeMessage.clear();
+        return message;
+    }
+
+    return m_innerStep ? m_innerStep->takeRuntimeMessage() : QString();
 }
 
 FlowStepStatus TimeoutStep::execute(const QImage& frame)
@@ -289,6 +342,9 @@ QString RetryStep::name() const
 
 FlowStepStatus RetryStep::execute(const QImage& frame)
 {
+    m_error.clear();
+    m_runtimeMessage.clear();
+
     if (!m_innerStep) {
         m_error = "inner step is null";
         return FlowStepStatus::Failed;
@@ -313,6 +369,18 @@ FlowStepStatus RetryStep::execute(const QImage& frame)
         return FlowStepStatus::Failed;
     }
 
+    const QString retryReason = m_innerStep->errorString();
+    m_runtimeMessage = retryReason.isEmpty()
+        ? QString("retry %1/%2 for step '%3'")
+              .arg(m_currentRetry)
+              .arg(m_maxRetries)
+              .arg(m_innerStep->name())
+        : QString("retry %1/%2 for step '%3': %4")
+              .arg(m_currentRetry)
+              .arg(m_maxRetries)
+              .arg(m_innerStep->name())
+              .arg(retryReason);
+
     m_innerStep->reset();
     return FlowStepStatus::Running;
 }
@@ -321,9 +389,21 @@ void RetryStep::reset()
 {
     m_currentRetry = 0;
     m_error.clear();
+    m_runtimeMessage.clear();
     if (m_innerStep) {
         m_innerStep->reset();
     }
+}
+
+QString RetryStep::takeRuntimeMessage()
+{
+    if (!m_runtimeMessage.isEmpty()) {
+        const QString message = m_runtimeMessage;
+        m_runtimeMessage.clear();
+        return message;
+    }
+
+    return m_innerStep ? m_innerStep->takeRuntimeMessage() : QString();
 }
 
 QString RetryStep::errorString() const

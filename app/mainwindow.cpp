@@ -187,7 +187,7 @@ void MainWindow::createUI()
                 QMetaObject::invokeMethod(m_taskManager,
                                           [this]() {
                                               ShopTask* task = new ShopTask();
-                                              TaskState* state = new StMainMenuToShop(m_vision, m_device);
+                                              StepFlowState* state = new StMainMenuToShop(m_vision, m_device);
                                               task->setInitialState(state);
                                               m_taskManager->addTask(task);
                                           },

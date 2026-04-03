@@ -1,32 +1,40 @@
 ﻿#ifndef STEPFLOWSTATE_H
 #define STEPFLOWSTATE_H
 
-#include "TaskState.h"
 #include "FlowStep.h"
 
+#include <QObject>
+#include <QImage>
+#include <QString>
 #include <memory>
 #include <vector>
 
-class StepFlowState : public TaskState
+class StepFlowState : public QObject
 {
+    Q_OBJECT
+
 public:
     explicit StepFlowState(QObject* parent = nullptr);
     ~StepFlowState() override = default;
 
-    TaskState* update(const QImage& frame) override;
-    bool isFailed() const override;
-    QString failureReason() const override;
-    bool usesExternalTimeout() const override;
+    virtual QString name() const = 0;
+    virtual StepFlowState* update(const QImage& frame);
+    virtual bool isFailed() const;
+    virtual QString failureReason() const;
+    virtual QString takeRuntimeMessage();
+    virtual bool usesExternalTimeout() const;
 
 protected:
     void addStep(std::unique_ptr<FlowStep> step);
-    virtual TaskState* onFlowFinished() = 0;
+    void setRuntimeMessage(const QString& message);
+    virtual StepFlowState* onFlowFinished() = 0;
 
 private:
     std::vector<std::unique_ptr<FlowStep>> m_steps;
     int m_currentStepIndex = 0;
     bool m_failed = false;
     QString m_failureReason;
+    QString m_runtimeMessage;
 };
 
 #endif

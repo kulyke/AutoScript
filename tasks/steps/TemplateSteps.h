@@ -19,12 +19,14 @@ public:
 
     QString name() const override;
     FlowStepStatus execute(const QImage& frame) override;
+    QString errorString() const override;
 
 private:
     VisionEngine* m_vision;
     QString m_templatePath;
     double m_threshold;
     QString m_name;
+    QString m_error;
 };
 
 class ClickTemplateStep : public FlowStep
@@ -38,6 +40,7 @@ public:
 
     QString name() const override;
     FlowStepStatus execute(const QImage& frame) override;
+    QString errorString() const override;
 
 private:
     VisionEngine* m_vision;
@@ -45,6 +48,7 @@ private:
     QString m_templatePath;
     double m_threshold;
     QString m_name;
+    QString m_error;
 };
 
 class TapPointStep : public FlowStep
@@ -130,6 +134,7 @@ public:
     QString name() const override;
     FlowStepStatus execute(const QImage& frame) override;
     void reset() override;
+    QString takeRuntimeMessage() override;
     QString errorString() const override;
 
 private:
@@ -138,6 +143,7 @@ private:
     int m_elapsedFrames = 0;
     QString m_name;
     QString m_error;
+    QString m_runtimeMessage;
 };
 
 class RetryStep : public FlowStep
@@ -150,6 +156,7 @@ public:
     QString name() const override;
     FlowStepStatus execute(const QImage& frame) override;
     void reset() override;
+    QString takeRuntimeMessage() override;
     QString errorString() const override;
 
 private:
@@ -158,6 +165,7 @@ private:
     int m_currentRetry = 0;
     QString m_name;
     QString m_error;
+    QString m_runtimeMessage;
 };
 
 #endif

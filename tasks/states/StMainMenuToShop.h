@@ -16,7 +16,7 @@ public:
     QString name() const override;
 
 private:
-    TaskState* onFlowFinished() override;
+    StepFlowState* onFlowFinished() override;
 
     VisionEngine* m_vision;
     DeviceController* m_device;

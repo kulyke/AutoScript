@@ -18,6 +18,7 @@ public:
     virtual QString name() const = 0;
     virtual FlowStepStatus execute(const QImage& frame) = 0;
     virtual void reset() {}
+    virtual QString takeRuntimeMessage() { return QString(); }
     virtual QString errorString() const { return QString(); }
 };
 

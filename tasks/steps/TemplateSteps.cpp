@@ -6,11 +6,11 @@
 #include <utility>
 
 WaitTemplateStep::WaitTemplateStep(VisionEngine* vision,
-                                   QString templatePath,
+                                   QString templateRef,
                                    double threshold,
                                    QString stepName)
     : m_vision(vision)
-    , m_templatePath(std::move(templatePath))
+    , m_templateRef(std::move(templateRef))
     , m_threshold(threshold)
     , m_name(std::move(stepName))
 {
@@ -31,7 +31,7 @@ FlowStepStatus WaitTemplateStep::execute(const QImage& frame)
     }
 
     QPoint point;
-    if (m_vision->findTemplate(frame, m_templatePath, point, m_threshold)) {
+    if (m_vision->findTemplate(frame, m_templateRef, point, m_threshold)) {
         return FlowStepStatus::Done;
     }
     return FlowStepStatus::Running;
@@ -44,12 +44,12 @@ QString WaitTemplateStep::errorString() const
 
 ClickTemplateStep::ClickTemplateStep(VisionEngine* vision,
                                      DeviceController* device,
-                                     QString templatePath,
+                                     QString templateRef,
                                      double threshold,
                                      QString stepName)
     : m_vision(vision)
     , m_device(device)
-    , m_templatePath(std::move(templatePath))
+    , m_templateRef(std::move(templateRef))
     , m_threshold(threshold)
     , m_name(std::move(stepName))
 {
@@ -74,7 +74,7 @@ FlowStepStatus ClickTemplateStep::execute(const QImage& frame)
     }
 
     QPoint point;
-    if (!m_vision->findTemplate(frame, m_templatePath, point, m_threshold)) {
+    if (!m_vision->findTemplate(frame, m_templateRef, point, m_threshold)) {
         return FlowStepStatus::Running;
     }
 
@@ -82,7 +82,7 @@ FlowStepStatus ClickTemplateStep::execute(const QImage& frame)
         m_error = QString("tap (%1,%2) failed for template '%3'")
             .arg(point.x())
             .arg(point.y())
-            .arg(m_templatePath);
+            .arg(m_templateRef);
         return FlowStepStatus::Failed;
     }
 

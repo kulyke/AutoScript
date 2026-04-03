@@ -1,7 +1,8 @@
 ﻿#include "VisionEngine.h"
 
+#include "TemplateCatalog.h"
+
 #include <QDebug>
-#include <QDir>
 
 VisionEngine::VisionEngine(QObject *parent)
     : QObject(parent)
@@ -24,21 +25,49 @@ cv::Mat VisionEngine::QImageToMat(const QImage &img)
     return mat.clone();
 }
 
-bool VisionEngine::findTemplate(const QImage& screen, const QString& templatePath, QPoint& pt, double threshold)
+const TemplateMetadata* VisionEngine::resolveTemplateMetadata(const QString& templateRef) const
+{
+    return TemplateCatalog::findByKey(templateRef);
+}
+
+cv::Mat VisionEngine::loadTemplate(const QString& templateRef,
+                                   QString& resolvedPath,
+                                   double& resolvedThreshold)
+{
+    const TemplateMetadata* metadata = resolveTemplateMetadata(templateRef);
+    resolvedPath = metadata ? metadata->path : templateRef;
+    resolvedThreshold = metadata ? metadata->defaultThreshold : 0.9;
+
+    const auto cacheIt = m_templateCache.constFind(resolvedPath);
+    if (cacheIt != m_templateCache.constEnd()) {
+        return cacheIt.value();
+    }
+
+    cv::Mat tpl = cv::imread(resolvedPath.toStdString());
+    if (tpl.empty()) {
+        return cv::Mat();
+    }
+
+    m_templateCache.insert(resolvedPath, tpl);
+    return tpl;
+}
+
+bool VisionEngine::findTemplate(const QImage& screen, const QString& templateRef, QPoint& pt, double threshold)
 {
     cv::Mat screenMat = QImageToMat(screen);
     if (screenMat.empty()) {
         qDebug() << "screen.isNull=" << screen.isNull() << " size=" << screen.size();
     }
 
-    // 加载模板图像
-    // qDebug() << "templatePath=" << templatePath;
-    // qDebug() << "cwd=" << QDir::currentPath();
-    cv::Mat tpl = cv::imread(templatePath.toStdString());
+    QString resolvedPath;
+    double defaultThreshold = 0.9;
+    cv::Mat tpl = loadTemplate(templateRef, resolvedPath, defaultThreshold);
     if(tpl.empty()) {
-        qDebug()<<"template load failed";
+        qDebug() << "template load failed:" << templateRef << "resolvedPath=" << resolvedPath;
         return false;
     }
+
+    const double effectiveThreshold = threshold >= 0.0 ? threshold : defaultThreshold;
 
     // 查找模板
     double score;
@@ -47,10 +76,10 @@ bool VisionEngine::findTemplate(const QImage& screen, const QString& templatePat
                 tpl,
                 pt,
                 score,
-                threshold
+                effectiveThreshold
                 );
     if(ok) {
-        qDebug()<<"match success score="<<score;
+        qDebug() << "match success template=" << templateRef << "score=" << score;
     }
     return ok;
 }

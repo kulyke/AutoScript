@@ -16,8 +16,8 @@ StShop::StShop(VisionEngine *vision, DeviceController *device, QObject *parent)
         std::make_unique<TimeoutStep>(
             std::make_unique<WaitTemplateStep>(
                 m_vision,
-                "resources/templates/shop_title.png",
-                0.9,
+                "shop.title",
+                -1.0,
                 "Wait shop title"),
             5,
             "Timeout wait shop title"),

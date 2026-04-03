@@ -27,6 +27,14 @@
 - Removed the redundant `TaskState` abstraction and simplified the state hierarchy to `StepFlowState` only.
 - Added success runtime logging for finished steps and preserved runtime messages across state transitions.
 - Reviewed the framework readiness before business development and identified the next structural optimization targets.
+- Extracted task registration and task creation out of `MainWindow` into a reusable task registry.
+- Tightened task UI and manager matching from fuzzy name checks to exact task type matching.
+- Added template metadata registration and in-memory template caching in the vision layer.
+- Switched the current shop flow from hard-coded template paths to logical template keys.
+- Added stable per-instance task IDs and switched UI/manager coordination to taskId-based matching.
+- Added a QtTest-based framework test target covering StepFlowState, TaskBase, TimeoutStep, and RetryStep.
+- Simplified TaskManager ownership so the current task is derived from the queue head and task failure no longer stops the whole scheduler.
+- Scoped OpenCV include and link settings to individual CMake targets instead of relying on global project-wide configuration.
 
 ## Current Flow
 
@@ -40,7 +48,6 @@
 
 ## Next Candidates
 
-- Extract task registration and creation out of `MainWindow` into a task registry or factory.
-- Add template caching and resource metadata before business templates grow.
-- Introduce stable task IDs instead of name-based matching in UI and manager operations.
-- Add non-empty tests for StepFlowState, RetryStep, TimeoutStep, and TaskBase transitions.
+- Expand tests to cover TaskManager scheduling, failure branches, and template catalog or matcher behavior.
+- Add lightweight debug affordances for task IDs only if concurrent same-type tasks become common.
+- Reduce broad source glob usage when the next file-structure change touches CMake again.

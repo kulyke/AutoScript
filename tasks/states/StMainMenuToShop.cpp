@@ -18,8 +18,8 @@ StMainMenuToShop::StMainMenuToShop(VisionEngine *vision, DeviceController *devic
             std::make_unique<ClickTemplateStep>(
                 m_vision,
                 m_device,
-                "resources/templates/shop_button.png",
-                0.9,
+                "shop.button",
+                -1.0,
                 "Click shop button"),
             5,
             "Timeout click shop button"),

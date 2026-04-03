@@ -13,7 +13,7 @@ class WaitTemplateStep : public FlowStep
 {
 public:
     WaitTemplateStep(VisionEngine* vision,
-                     QString templatePath,
+                     QString templateRef,
                      double threshold,
                      QString stepName);
 
@@ -23,7 +23,7 @@ public:
 
 private:
     VisionEngine* m_vision;
-    QString m_templatePath;
+    QString m_templateRef;
     double m_threshold;
     QString m_name;
     QString m_error;
@@ -34,7 +34,7 @@ class ClickTemplateStep : public FlowStep
 public:
     ClickTemplateStep(VisionEngine* vision,
                       DeviceController* device,
-                      QString templatePath,
+                      QString templateRef,
                       double threshold,
                       QString stepName);
 
@@ -45,7 +45,7 @@ public:
 private:
     VisionEngine* m_vision;
     DeviceController* m_device;
-    QString m_templatePath;
+    QString m_templateRef;
     double m_threshold;
     QString m_name;
     QString m_error;

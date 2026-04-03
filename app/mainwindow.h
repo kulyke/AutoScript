@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QThread>
+#include <QString>
 #include <memory>
 
 #include "screencapture.h"
@@ -34,23 +35,25 @@ protected:
     void resizeEvent(QResizeEvent *event) override;
 
 private slots:
-
     void onStart();
     void onStop();
     void appendLog(const QString& msg);
-    void onTaskStatusChanged(const QString& taskName,
+    void onTaskStatusChanged(const QString& taskId,
+                             const QString& taskName,
                              const QString& statusText,
                              const QString& stateName);
-    void onTaskFinished(const QString& taskName,
+    void onTaskFinished(const QString& taskId,
+                        const QString& taskName,
                         const QString& finalStatus);
 
 private:
     void refreshEmulatorView();
-    int findTaskStatusRow(const QString& taskName) const;
-    void setTaskStatusRow(const QString& taskName,
+    QString createTaskId(const QString& taskTypeName) const;
+    int findTaskStatusRow(const QString& taskId) const;
+    void setTaskStatusRow(const QString& taskId,
                           const QString& statusText,
                           const QString& stateName);
-    void removeTaskStatusRow(const QString& taskName);
+    void removeTaskStatusRow(const QString& taskId);
 
 private:
     Ui::MainWindow *ui;

@@ -8,10 +8,13 @@
 #include <QMessageBox>
 #include <QMetaObject>
 #include <QFile>
+#include <QMap>
 #include <QResizeEvent>
 #include <QTimer>
+#include <QUuid>
 
-#include "shoptask.h"
+#include "taskbase.h"
+#include "TaskRegistry.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -138,28 +141,23 @@ void MainWindow::createUI()
     m_taskStatus->setMinimumWidth(360);
 
     /* 初始化任务树 */
-    //活动
     {
-        QTreeWidgetItem* campaign = new QTreeWidgetItem(m_taskTree);
-        campaign->setText(0,"Campaign");
+        QMap<QString, QTreeWidgetItem*> categoryItems;
+        const QList<TaskDefinition>& taskDefinitions = TaskRegistry::definitions();
 
-        QTreeWidgetItem* c1 = new QTreeWidgetItem(campaign);
-        c1->setText(0,"12-4 Farm");
-    }
-    //日常(委托，科研，商店)
-    {
-        QTreeWidgetItem* daily = new QTreeWidgetItem(m_taskTree);
-        daily->setText(0,"Daily");
+        for (const TaskDefinition& definition : taskDefinitions) {
+            QTreeWidgetItem* categoryItem = categoryItems.value(definition.category, nullptr);
+            if (!categoryItem) {
+                categoryItem = new QTreeWidgetItem(m_taskTree);
+                categoryItem->setText(0, definition.category);
+                categoryItems.insert(definition.category, categoryItem);
+            }
 
-        //委托
-        QTreeWidgetItem* d1 = new QTreeWidgetItem(daily);
-        d1->setText(0,"Commission");
-        //科研
-        QTreeWidgetItem* d2 = new QTreeWidgetItem(daily);
-        d2->setText(0,"Research");
-        //商店
-        QTreeWidgetItem* d3 = new QTreeWidgetItem(daily);
-        d3->setText(0,"Shop");
+            QTreeWidgetItem* taskItem = new QTreeWidgetItem(categoryItem);
+            taskItem->setText(0, definition.displayName);
+            taskItem->setData(0, Qt::UserRole, definition.taskTypeName);
+            taskItem->setData(0, Qt::UserRole + 1, definition.initialStateName);
+        }
     }
 
     m_taskTree->expandAll();
@@ -167,50 +165,44 @@ void MainWindow::createUI()
     //连接任务树的点击事件
     connect(m_taskTree, &QTreeWidget::itemDoubleClicked,
         [this](QTreeWidgetItem* item, int column)->void {
-            QString taskName = item->text(0);
-            appendLog(QString("Task '%1' clicked, column: %2").arg(taskName).arg(column));
-            //双击为任务列表添加任务
-            if(taskName == "Shop") {
-                bool flag = true;
-                for (int i = 0; i < m_taskStatus->rowCount(); i++) {
-                    QTableWidgetItem* item = m_taskStatus->item(i,0);
-                    if (item->text() == taskName) {//判定当前的任务列表中是否存在重复的任务
-                        flag = false;
-                        break;
-                    }
-                }
-                if (!flag) {
-                    appendLog(QString("Task '%1' already exists").arg(taskName));
-                    return;
-                }
-                //在任务线程中创建并添加任务，避免跨线程 moveToThread 警告
-                QMetaObject::invokeMethod(m_taskManager,
-                                          [this]() {
-                                              ShopTask* task = new ShopTask();
-                                              StepFlowState* state = new StMainMenuToShop(m_vision, m_device);
-                                              task->setInitialState(state);
-                                              m_taskManager->addTask(task);
-                                          },
-                                          Qt::QueuedConnection);
+            const QString displayName = item->text(0);
+            const QString taskTypeName = item->data(0, Qt::UserRole).toString();
+            const QString initialStateName = item->data(0, Qt::UserRole + 1).toString();
+            appendLog(QString("Task '%1' clicked, column: %2").arg(displayName).arg(column));
 
-                //更新table_taskStatus显示
-                m_taskStatus->insertRow(m_taskStatus->rowCount());
-                QTableWidgetItem* taskItem = new QTableWidgetItem(taskName);
-                QTableWidgetItem* statusItem = new QTableWidgetItem("Idle");
-                QTableWidgetItem* stateItem = new QTableWidgetItem("StMainMenuToShop");
-                QTableWidgetItem* closeItem = new QTableWidgetItem("X");
-                taskItem->setTextAlignment(Qt::AlignCenter);
-                statusItem->setTextAlignment(Qt::AlignCenter);
-                stateItem->setTextAlignment(Qt::AlignCenter);
-                closeItem->setTextAlignment(Qt::AlignCenter);
-                m_taskStatus->setItem(m_taskStatus->rowCount()-1,0,taskItem);
-                m_taskStatus->setItem(m_taskStatus->rowCount()-1,1,statusItem);
-                m_taskStatus->setItem(m_taskStatus->rowCount()-1,2,stateItem);
-                m_taskStatus->setItem(m_taskStatus->rowCount()-1,3,closeItem);
-
-            } else {
-                appendLog(QString("No task associated with '%1'").arg(taskName));
+            if (taskTypeName.isEmpty()) {
+                appendLog(QString("No task associated with '%1'").arg(displayName));
+                return;
             }
+
+            const QString taskId = createTaskId(taskTypeName);
+
+            QMetaObject::invokeMethod(m_taskManager,
+                                      [this, taskTypeName, taskId]() {
+                                          TaskBase* task = TaskRegistry::createTask(taskTypeName, m_vision, m_device);
+                                          if (task) {
+                                              task->setTaskId(taskId);
+                                              m_taskManager->addTask(task);
+                                          }
+                                      },
+                                      Qt::QueuedConnection);
+
+            m_taskStatus->insertRow(m_taskStatus->rowCount());
+            QTableWidgetItem* taskItem = new QTableWidgetItem(displayName);
+            QTableWidgetItem* statusItem = new QTableWidgetItem("Idle");
+            QTableWidgetItem* stateItem = new QTableWidgetItem(initialStateName);
+            QTableWidgetItem* closeItem = new QTableWidgetItem("X");
+            taskItem->setTextAlignment(Qt::AlignCenter);
+            statusItem->setTextAlignment(Qt::AlignCenter);
+            stateItem->setTextAlignment(Qt::AlignCenter);
+            closeItem->setTextAlignment(Qt::AlignCenter);
+            taskItem->setData(Qt::UserRole, taskId);
+            taskItem->setData(Qt::UserRole + 1, taskTypeName);
+            taskItem->setToolTip(taskId);
+            m_taskStatus->setItem(m_taskStatus->rowCount()-1,0,taskItem);
+            m_taskStatus->setItem(m_taskStatus->rowCount()-1,1,statusItem);
+            m_taskStatus->setItem(m_taskStatus->rowCount()-1,2,stateItem);
+            m_taskStatus->setItem(m_taskStatus->rowCount()-1,3,closeItem);
         });
 
     /* 初始化状态表 */
@@ -254,9 +246,13 @@ void MainWindow::createUI()
                 return;
             }
             //获取任务名称
-            QString taskName = m_taskStatus->item(row,0)->text();
+            QTableWidgetItem* taskItem = m_taskStatus->item(row,0);
+            const QString taskName = taskItem ? taskItem->text() : QString();
+            const QString taskId = taskItem ? taskItem->data(Qt::UserRole).toString() : QString();
             QMetaObject::invokeMethod(m_taskManager,
-                                      [this, taskName]() { m_taskManager->removeTaskByName(taskName); },
+                                      [this, taskId]() {
+                                          m_taskManager->removeTaskById(taskId);
+                                      },
                                       Qt::QueuedConnection);
             appendLog(QString("Task '%1' removed").arg(taskName));
             //从状态表中移除对应行
@@ -334,29 +330,39 @@ void MainWindow::appendLog(const QString &msg)
                       .arg(msg));
 }
 
-void MainWindow::onTaskStatusChanged(const QString& taskName,
+QString MainWindow::createTaskId(const QString& taskTypeName) const
+{
+    return QString("%1-%2")
+        .arg(taskTypeName,
+             QUuid::createUuid().toString(QUuid::WithoutBraces));
+}
+
+void MainWindow::onTaskStatusChanged(const QString& taskId,
+                                     const QString& taskName,
                                      const QString& statusText,
                                      const QString& stateName)
 {
-    setTaskStatusRow(taskName, statusText, stateName);
+    Q_UNUSED(taskName);
+    setTaskStatusRow(taskId, statusText, stateName);
 }
 
-void MainWindow::onTaskFinished(const QString& taskName,
+void MainWindow::onTaskFinished(const QString& taskId,
+                                const QString& taskName,
                                 const QString& finalStatus)
 {
-    setTaskStatusRow(taskName, finalStatus, QString());
-
+    Q_UNUSED(taskName);
+    setTaskStatusRow(taskId, finalStatus, QString());
     if (finalStatus == "Removed") {
-        removeTaskStatusRow(taskName);
+        removeTaskStatusRow(taskId);
         return;
     }
 
-    QTimer::singleShot(1200, this, [this, taskName]() {
-        removeTaskStatusRow(taskName);
+    QTimer::singleShot(1200, this, [this, taskId]() {
+        removeTaskStatusRow(taskId);
     });
 }
 
-int MainWindow::findTaskStatusRow(const QString& taskName) const
+int MainWindow::findTaskStatusRow(const QString& taskId) const
 {
     for (int row = 0; row < m_taskStatus->rowCount(); ++row) {
         QTableWidgetItem* taskItem = m_taskStatus->item(row, 0);
@@ -364,21 +370,19 @@ int MainWindow::findTaskStatusRow(const QString& taskName) const
             continue;
         }
 
-        const QString existingName = taskItem->text();
-        if (existingName == taskName
-            || existingName.contains(taskName)
-            || taskName.contains(existingName)) {
+        const QString existingTaskId = taskItem->data(Qt::UserRole).toString();
+        if (!existingTaskId.isEmpty() && existingTaskId == taskId) {
             return row;
         }
     }
     return -1;
 }
 
-void MainWindow::setTaskStatusRow(const QString& taskName,
+void MainWindow::setTaskStatusRow(const QString& taskId,
                                   const QString& statusText,
                                   const QString& stateName)
 {
-    const int row = findTaskStatusRow(taskName);
+    const int row = findTaskStatusRow(taskId);
     if (row < 0) {
         return;
     }
@@ -405,9 +409,9 @@ void MainWindow::setTaskStatusRow(const QString& taskName,
     stateItem->setToolTip(stateName);
 }
 
-void MainWindow::removeTaskStatusRow(const QString& taskName)
+void MainWindow::removeTaskStatusRow(const QString& taskId)
 {
-    const int row = findTaskStatusRow(taskName);
+    const int row = findTaskStatusRow(taskId);
     if (row >= 0) {
         m_taskStatus->removeRow(row);
     }

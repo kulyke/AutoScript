@@ -12,7 +12,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 # 查找 Qt
-find_package(Qt5 COMPONENTS Widgets Network REQUIRED)
+find_package(Qt5 COMPONENTS Widgets Network Test REQUIRED)
 
 # OpenCV
 set(OPENCV_ROOT "F:/Qt/Project/sevision/3rd/opencv")
@@ -20,9 +20,16 @@ set(OPENCV_INCLUDE_DIR "${OPENCV_ROOT}/include")
 set(OPENCV_LIB_DIR "${OPENCV_ROOT}/lib")
 set(OPENCV_BIN_DIR "${OPENCV_ROOT}/bin")
 
-include_directories("${OPENCV_INCLUDE_DIR}")
-include_directories("${OPENCV_INCLUDE_DIR}/opencv2")
-link_directories("${OPENCV_LIB_DIR}")
+set(PROJECT_INCLUDE_DIRS
+    app
+    core
+    automation
+    vision
+    tasks
+    utils
+    config
+    "${OPENCV_INCLUDE_DIR}"
+)
 
 # 源码目录
 set(SRC_DIR
@@ -61,13 +68,12 @@ add_executable(${PROJECT_NAME}
 # 头文件路径
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-    app
-    core
-    automation
-    vision
-    tasks
-    utils
-    config
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_directories(${PROJECT_NAME}
+    PRIVATE
+    "${OPENCV_LIB_DIR}"
 )
 
 # 链接库
@@ -113,3 +119,37 @@ if(WIN32)
         COMMENT "Copy OpenCV runtime DLL to output directory"
     )
 endif()
+
+enable_testing()
+
+add_executable(AutoScriptTests
+    test/test_tasks.cpp
+    core/TaskBase.cpp
+    core/StepFlowState.cpp
+    tasks/steps/TemplateSteps.cpp
+    automation/DeviceController.cpp
+    vision/VisionEngine.cpp
+    vision/TemplateCatalog.cpp
+    vision/TemplateMatcher.cpp
+)
+
+target_include_directories(AutoScriptTests
+    PRIVATE
+    ${PROJECT_INCLUDE_DIRS}
+)
+
+target_link_directories(AutoScriptTests
+    PRIVATE
+    "${OPENCV_LIB_DIR}"
+)
+
+target_link_libraries(AutoScriptTests
+    Qt5::Core
+    Qt5::Gui
+    Qt5::Network
+    Qt5::Test
+    debug ${OpenCV_LIBS_DEBUG}
+    optimized ${OpenCV_LIBS_RELEASE}
+)
+
+add_test(NAME AutoScriptTests COMMAND AutoScriptTests)

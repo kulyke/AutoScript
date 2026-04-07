@@ -1,7 +1,6 @@
 ﻿#include "stmainmenutoshop.h"
 #include "visionengine.h"
 #include "devicecontroller.h"
-#include "stshop.h"
 #include "steps/TemplateSteps.h"
 
 #include <QDebug>
@@ -21,12 +20,24 @@ StMainMenuToShop::StMainMenuToShop(VisionEngine *vision, DeviceController *devic
                 "shop.button",
                 -1.0,
                 "Click shop button"),
-            5,
+            3,
             "Timeout click shop button"),
         2,
         "Retry click shop button"));
 
-    addStep(std::make_unique<DelayFramesStep>(8, "Wait page transition"));
+    addStep(std::make_unique<DelayFramesStep>(3, "Wait page transition"));
+
+    addStep(std::make_unique<RetryStep>(
+        std::make_unique<TimeoutStep>(
+            std::make_unique<WaitTemplateStep>(
+                m_vision,
+                "shop.title",
+                -1.0,
+                "Wait shop title"),
+            5,
+            "Timeout wait shop title"),
+        1,
+        "Retry wait shop title"));
 }
 
 StMainMenuToShop::~StMainMenuToShop()
@@ -41,6 +52,6 @@ QString StMainMenuToShop::name() const
 
 StepFlowState* StMainMenuToShop::onFlowFinished()
 {
-    setRuntimeMessage("[StMainMenuToShop] transition ready: enter StShop");
-    return new StShop(m_vision, m_device);
+    setRuntimeMessage("[StMainMenuToShop] finished");
+    return nullptr;
 }

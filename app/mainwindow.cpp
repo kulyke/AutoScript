@@ -280,31 +280,6 @@ void MainWindow::onStart()
                                   m_taskManager->start();
                               },
                               Qt::QueuedConnection);
-
-    // 测试：首帧到达后再执行模板匹配，避免 m_currentFrame 为空
-    // QMetaObject::Connection* oneShotConn = new QMetaObject::Connection;
-    // *oneShotConn = connect(m_capture, &ScreenCapture::frameReady,
-    //                        this,
-    //                        [this, oneShotConn](const QImage& img)->void {
-    //     QObject::disconnect(*oneShotConn);
-    //     delete oneShotConn;
-
-    //     appendLog("Find shop button");
-    //     QPoint pt;
-    //     bool found = m_vision->findTemplate(
-    //                 img,
-    //                 "resources/templates/shop_button.png",
-    //                 pt,
-    //                 0.9
-    //                 );
-    //     if(found) {
-    //         appendLog(QString("Shop button found (%1,%2)").arg(pt.x()).arg(pt.y()));
-    //         m_device->tap(pt.x(),pt.y());
-    //     }
-    //     else {
-    //         appendLog("Shop button not found");
-    //     }
-    // });
     
 }
 
@@ -323,7 +298,7 @@ void MainWindow::onStop()
 void MainWindow::appendLog(const QString &msg)
 {
     QString time = QDateTime::currentDateTime()
-            .toString("hh:mm:ss");
+            .toString("hh:mm:ss.zzz");
 
     m_logEdit->append(QString("[%1] %2")
                       .arg(time)

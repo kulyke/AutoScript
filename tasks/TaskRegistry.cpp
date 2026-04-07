@@ -1,7 +1,7 @@
 ﻿#include "TaskRegistry.h"
 
 #include "ShopTask.h"
-#include "states/StMainMenuToShop.h"
+#include "ErosionLevelingTask.h"
 
 namespace {
 
@@ -14,9 +14,16 @@ QList<TaskDefinition> buildTaskDefinitions()
             "ShopTask",
             "StMainMenuToShop",
             [](VisionEngine* vision, DeviceController* device) -> TaskBase* {
-                ShopTask* task = new ShopTask();
-                task->setInitialState(new StMainMenuToShop(vision, device));
-                return task;
+                return new ShopTask(vision, device);
+            }
+        },
+        {
+            "TheBigWorld",
+            "Erosion-leveling",
+            "ErosionLevelingTask",
+            "StMainMenuToAttackMenu",
+            [](VisionEngine* vision, DeviceController* device) -> TaskBase* {
+                return new ErosionLevelingTask(vision, device);
             }
         }
     };

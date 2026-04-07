@@ -35,19 +35,39 @@
 - Added a QtTest-based framework test target covering StepFlowState, TaskBase, TimeoutStep, and RetryStep.
 - Simplified TaskManager ownership so the current task is derived from the queue head and task failure no longer stops the whole scheduler.
 - Scoped OpenCV include and link settings to individual CMake targets instead of relying on global project-wide configuration.
+- Drafted a Zone data model and world-map transform design for future large-world navigation flows.
+- Drafted a StepFlowState-style world-map jump state machine for cross-zone travel.
+- Added compilable world-map foundation classes for zone catalog loading and fixed-center transform snapshots.
+- Added starter large-world zone data and runtime copy rules for world-map resources.
+- Wired shared world-map runtime context into the existing Erosion-leveling task path.
+- Added a bootstrap state that initializes zone metadata and the fixed-center world-map transform after entering the world map.
+- Updated project docs to reflect new large-world files and the removal of `StShop`.
 
 ## Current Flow
 
 - `StMainMenuToShop`
   - Click shop button
-  - Wait several frames for page transition
-  - Enter `StShop`
-- `StShop`
   - Wait for shop title
   - Complete task
+- `StMainMenuToAttackMenu`
+  - Click attack button
+  - Wait for attack menu title
+  - Enter `StAttackMenuToWorldOcean`
+- `StAttackMenuToWorldOcean`
+  - Click world ocean button
+  - Wait for world ocean title
+  - Enter `StWorldOceanToWorldMap`
+- `StWorldOceanToWorldMap`
+  - Click world map button
+  - Wait for world map title
+  - Enter `StWorldMapBootstrap`
+- `StWorldMapBootstrap`
+  - Load world-map zone catalog
+  - Initialize fixed-center world-map transform
+  - Complete current bootstrap flow
 
 ## Next Candidates
 
-- Expand tests to cover TaskManager scheduling, failure branches, and template catalog or matcher behavior.
-- Add lightweight debug affordances for task IDs only if concurrent same-type tasks become common.
-- Reduce broad source glob usage when the next file-structure change touches CMake again.
+- Add world-map template keys and calibration assets for pinned-zone, zone-type, and entry-state recognition.
+- Add navigation-specific world-map steps after bootstrap, starting with focus, pin verification, and zone-type selection.
+- Return to framework tests after the world-map navigation path reaches a runnable MVP.

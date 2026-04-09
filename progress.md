@@ -42,6 +42,12 @@
 - Wired shared world-map runtime context into the existing Erosion-leveling task path.
 - Added a bootstrap state that initializes zone metadata and the fixed-center world-map transform after entering the world map.
 - Updated project docs to reflect new large-world files and the removal of `StShop`.
+- Added shared world-map runtime context for current zone and future goto request state.
+- Added a current-zone resolution state after world-map bootstrap.
+- Added target-zone focus runtime state and a swipe-based world-map focus step after current-zone resolution.
+- Moved large-world service construction into `StWorldMapBootstrap` while preserving lifetime across downstream states with shared ownership.
+- Threaded `WorldMapGotoRequest` from task entry to bootstrap so future business routes can choose targets without pre-creating world-map services.
+- Moved the default `WorldMapGotoRequest` creation back into `StWorldMapBootstrap` and removed request threading from the pre-world-map menu states.
 
 ## Current Flow
 
@@ -64,10 +70,20 @@
 - `StWorldMapBootstrap`
   - Load world-map zone catalog
   - Initialize fixed-center world-map transform
-  - Complete current bootstrap flow
+  - Create shared world-map services for the downstream jump chain
+  - Create the default runtime goto request for downstream focus/pin states
+  - Enter `StWorldMapResolveCurrentZone`
+- `StWorldMapResolveCurrentZone`
+  - Resolve current zone from world center
+  - Enter `StWorldMapFocusTargetZone`
+- `StWorldMapFocusTargetZone`
+  - Skip when no target zone request exists
+  - Otherwise swipe the world map toward the target zone until centered or attempts are exhausted
+  - Complete the current navigation skeleton
 
 ## Next Candidates
 
 - Add world-map template keys and calibration assets for pinned-zone, zone-type, and entry-state recognition.
-- Add navigation-specific world-map steps after bootstrap, starting with focus, pin verification, and zone-type selection.
+- Add pin verification and zone-type selection steps after target-zone focus.
+- Decide how business-level target selection should be injected into `StWorldMapBootstrap` without re-coupling the pre-world-map menu states.
 - Return to framework tests after the world-map navigation path reaches a runnable MVP.

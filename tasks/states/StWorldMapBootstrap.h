@@ -3,18 +3,19 @@
 
 #include "StepFlowState.h"
 
+#include <memory>
+
 class VisionEngine;
 class DeviceController;
 class WorldZoneCatalog;
 class WorldMapTransform;
+struct WorldMapRuntimeContext;
 
 class StWorldMapBootstrap : public StepFlowState
 {
 public:
     StWorldMapBootstrap(VisionEngine* vision,
                         DeviceController* device,
-                        WorldZoneCatalog* zoneCatalog,
-                        WorldMapTransform* transform,
                         QObject* parent = nullptr);
     ~StWorldMapBootstrap() override;
 
@@ -25,8 +26,9 @@ private:
 
     VisionEngine* m_vision;
     DeviceController* m_device;
-    WorldZoneCatalog* m_zoneCatalog;
-    WorldMapTransform* m_transform;
+    std::shared_ptr<WorldZoneCatalog> m_zoneCatalog;
+    std::shared_ptr<WorldMapTransform> m_worldMapTransform;
+    std::shared_ptr<WorldMapRuntimeContext> m_worldMapRuntimeContext;
 };
 
 #endif

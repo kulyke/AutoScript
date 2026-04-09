@@ -5,22 +5,15 @@
 
 #include "StWorldMapBootstrap.h"
 
-
 #include <QDebug>
-#include <memory>
 
 StWorldOceanToWorldMap::StWorldOceanToWorldMap(VisionEngine *vision,
                                                DeviceController *device,
-                                               WorldZoneCatalog* zoneCatalog,
-                                               WorldMapTransform* transform,
                                                QObject *parent)
     : StepFlowState(parent)
+    , m_vision(vision)
+    , m_device(device)
 {
-    m_vision = vision;
-    m_device = device;
-    m_zoneCatalog = zoneCatalog;
-    m_transform = transform;
-
     addStep(std::make_unique<RetryStep>(
         std::make_unique<TimeoutStep>(
             std::make_unique<ClickTemplateStep>(
@@ -62,5 +55,8 @@ QString StWorldOceanToWorldMap::name() const
 StepFlowState* StWorldOceanToWorldMap::onFlowFinished()
 {
     setRuntimeMessage("[StWorldOceanToWorldMap] finished");
-    return new StWorldMapBootstrap(m_vision, m_device, m_zoneCatalog, m_transform);
+    return new StWorldMapBootstrap(
+        m_vision,
+        m_device);
+
 }

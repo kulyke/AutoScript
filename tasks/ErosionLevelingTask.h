@@ -3,12 +3,8 @@
 
 #include "taskbase.h"
 
-#include <memory>
-
 class VisionEngine;
 class DeviceController;
-class WorldZoneCatalog;
-class WorldMapTransform;
 
 class ErosionLevelingTask : public TaskBase
 {
@@ -22,9 +18,6 @@ public:
 private:
     VisionEngine* m_vision;
     DeviceController* m_device;
-    std::unique_ptr<WorldZoneCatalog> m_zoneCatalog;
-    std::unique_ptr<WorldMapTransform> m_worldMapTransform;
-
 };
 
 #endif

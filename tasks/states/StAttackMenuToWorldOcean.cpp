@@ -6,20 +6,14 @@
 #include "StWorldOceanToWorldMap.h"
 
 #include <QDebug>
-#include <memory>
 
 StAttackMenuToWorldOcean::StAttackMenuToWorldOcean(VisionEngine *vision,
                                                    DeviceController *device,
-                                                   WorldZoneCatalog* zoneCatalog,
-                                                   WorldMapTransform* transform,
                                                    QObject *parent)
     : StepFlowState(parent)
+    , m_vision(vision)
+    , m_device(device)
 {
-    m_vision = vision;
-    m_device = device;
-    m_zoneCatalog = zoneCatalog;
-    m_transform = transform;
-
     addStep(std::make_unique<RetryStep>(
         std::make_unique<TimeoutStep>(
             std::make_unique<ClickTemplateStep>(
@@ -61,5 +55,7 @@ QString StAttackMenuToWorldOcean::name() const
 StepFlowState* StAttackMenuToWorldOcean::onFlowFinished()
 {
     setRuntimeMessage("[StAttackMenuToWorldOcean] finished");
-    return new StWorldOceanToWorldMap(m_vision, m_device, m_zoneCatalog, m_transform);
+    return new StWorldOceanToWorldMap(
+        m_vision,
+        m_device);
 }

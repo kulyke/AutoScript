@@ -10,6 +10,8 @@
 #include <QDir>
 
 #include <cmath>
+#include <QRect>
+#include <qDebug>
 
 namespace {
 
@@ -31,10 +33,12 @@ bool isWithinFocusTolerance(const QPointF& delta)
 }
 
 InitializeWorldMapStep::InitializeWorldMapStep(VisionEngine* vision,
+                                               DeviceController* device,
                                                WorldZoneCatalog* zoneCatalog,
                                                WorldMapTransform* transform,
                                                QString stepName)
     : m_vision(vision)
+    , m_device(device)
     , m_zoneCatalog(zoneCatalog)
     , m_transform(transform)
     , m_name(std::move(stepName))
@@ -74,25 +78,25 @@ FlowStepStatus InitializeWorldMapStep::execute(const QImage& frame)
         }
     }
 
-    if (!m_transform->hasWorldCenter()) {
-        const WorldMapCalibration calibration = m_transform->calibration();
-        m_transform->setWorldCenter(QPointF(
-            calibration.referenceMapSize.width() / 2.0,
-            calibration.referenceMapSize.height() / 2.0));
-    }
+    // if (!m_transform->hasWorldCenter()) {
+    //     const WorldMapCalibration calibration = m_transform->calibration();
+    //     m_transform->setWorldCenter(QPointF(
+    //         calibration.referenceMapSize.width() / 2.0,
+    //         calibration.referenceMapSize.height() / 2.0));
+    // }
 
-    QString updateError;
-    if (!m_transform->update(frame, &updateError)) {
-        m_error = updateError;
-        return FlowStepStatus::Failed;
-    }
+    // QString updateError;
+    // if (!m_transform->update(frame, &updateError)) {
+    //     m_error = updateError;
+    //     return FlowStepStatus::Failed;
+    // }
 
-    const WorldMapTransformSnapshot snapshot = m_transform->snapshot();
-    m_runtimeMessage = QString("world map initialized: center=(%1,%2) screenAnchor=(%3,%4)")
-        .arg(snapshot.worldCenter.x(), 0, 'f', 1)
-        .arg(snapshot.worldCenter.y(), 0, 'f', 1)
-        .arg(snapshot.screenCenter.x(), 0, 'f', 1)
-        .arg(snapshot.screenCenter.y(), 0, 'f', 1);
+    // const WorldMapTransformSnapshot snapshot = m_transform->snapshot();
+    // m_runtimeMessage = QString("world map initialized: center=(%1,%2) screenAnchor=(%3,%4)")
+    //     .arg(snapshot.worldCenter.x(), 0, 'f', 1)
+    //     .arg(snapshot.worldCenter.y(), 0, 'f', 1)
+    //     .arg(snapshot.screenCenter.x(), 0, 'f', 1)
+    //     .arg(snapshot.screenCenter.y(), 0, 'f', 1);
     return FlowStepStatus::Done;
 }
 
@@ -143,10 +147,10 @@ FlowStepStatus ResolveCurrentWorldZoneStep::execute(const QImage& frame)
         m_error = "world map runtime context is null";
         return FlowStepStatus::Failed;
     }
-    if (!m_transform->isValid()) {
-        m_error = "world map transform is invalid";
-        return FlowStepStatus::Failed;
-    }
+    // if (!m_transform->isValid()) {
+    //     m_error = "world map transform is invalid";
+    //     return FlowStepStatus::Failed;
+    // }
 
     // const QPointF worldCenter = m_transform->worldCenter();
     const QPointF currentWorldZonePoint = QPoint(260.0, 560.0); //测试用：直接使用一个固定的世界坐标点来解析当前区域，避免实际解析过程中可能遇到的各种问题
@@ -156,6 +160,9 @@ FlowStepStatus ResolveCurrentWorldZoneStep::execute(const QImage& frame)
         return FlowStepStatus::Failed;
     }
 
+    //由于屏幕的位置会随着区域的不同发生移动，所以每次解析完当前区域后，更新世界中心
+    m_transform->setWorldCenter(zone->worldAnchor);
+
     m_runtimeContext->currentZoneId = zone->zoneId;
     m_runtimeContext->currentZoneName = zone->displayName;
     m_runtimeContext->lastResolutionSource = "nearest-world-center";
@@ -163,7 +170,12 @@ FlowStepStatus ResolveCurrentWorldZoneStep::execute(const QImage& frame)
     m_runtimeMessage = QString("current zone resolved: id=%1 name=%2 source=%3")
         .arg(zone->zoneId)
         .arg(zone->displayName)
-        .arg(m_runtimeContext->lastResolutionSource);
+        .arg(m_runtimeContext->lastResolutionSource) 
+        + QString("\nworld map initialized: center=(%1,%2) screenAnchor=(%3,%4)")
+        .arg(m_transform->snapshot().worldCenter.x(), 0, 'f', 1)
+        .arg(m_transform->snapshot().worldCenter.y(), 0, 'f', 1)
+        .arg(m_transform->snapshot().screenCenter.x(), 0, 'f', 1)
+        .arg(m_transform->snapshot().screenCenter.y(), 0, 'f', 1);
     return FlowStepStatus::Done;
 }
 
@@ -248,6 +260,10 @@ FlowStepStatus FocusTargetWorldZoneStep::execute(const QImage& frame)
     const WorldMapTransformSnapshot snapshot = m_transform->snapshot();
     const QPointF targetScreenPoint = m_transform->worldToScreen(targetZone->worldAnchor);
     const QPointF delta = targetScreenPoint - snapshot.screenCenter;
+    qDebug() << "targetZone.worldAnchor=" << targetZone->worldAnchor << "targetZone.displayName=" << targetZone->displayName
+             << "FocusTargetWorldZoneStep: targetScreenPoint=" << targetScreenPoint
+             << "snapshot.screenCenter=" << snapshot.screenCenter
+             << "delta=" << delta;
     if (isWithinFocusTolerance(delta)) {
         m_runtimeContext->focusedZoneId = targetZone->zoneId;
         m_runtimeContext->focusedZoneName = targetZone->displayName;
@@ -324,6 +340,182 @@ QString FocusTargetWorldZoneStep::takeRuntimeMessage()
 }
 
 QString FocusTargetWorldZoneStep::errorString() const
+{
+    return m_error;
+}
+
+TapTargetWorldZoneStep::TapTargetWorldZoneStep(DeviceController* device,
+                                               WorldZoneCatalog* zoneCatalog,
+                                               WorldMapTransform* transform,
+                                               WorldMapRuntimeContext* runtimeContext,
+                                               QString stepName)
+    : m_device(device)
+    , m_zoneCatalog(zoneCatalog)
+    , m_transform(transform)
+    , m_runtimeContext(runtimeContext)
+    , m_name(std::move(stepName))
+{
+}
+
+QString TapTargetWorldZoneStep::name() const
+{
+    return m_name;
+}
+
+FlowStepStatus TapTargetWorldZoneStep::execute(const QImage& frame)
+{
+    Q_UNUSED(frame);
+
+    m_error.clear();
+    m_runtimeMessage.clear();
+
+    if (!m_device) {
+        m_error = "device is null";
+        return FlowStepStatus::Failed;
+    }
+    if (!m_zoneCatalog) {
+        m_error = "world zone catalog is null";
+        return FlowStepStatus::Failed;
+    }
+    if (!m_transform) {
+        m_error = "world map transform is null";
+        return FlowStepStatus::Failed;
+    }
+    if (!m_runtimeContext) {
+        m_error = "world map runtime context is null";
+        return FlowStepStatus::Failed;
+    }
+    if (!m_transform->isValid()) {
+        m_error = "world map transform is invalid";
+        return FlowStepStatus::Failed;
+    }
+    if (!m_runtimeContext->hasTargetZoneRequest()) {
+        m_error = "target zone request is missing";
+        return FlowStepStatus::Failed;
+    }
+
+    const WorldZoneMetadata* targetZone =
+        m_zoneCatalog->findById(m_runtimeContext->gotoRequest.targetZoneId);
+    if (!targetZone) {
+        m_error = QString("target zone not found: id=%1")
+            .arg(m_runtimeContext->gotoRequest.targetZoneId);
+        return FlowStepStatus::Failed;
+    }
+
+    const QPoint tapPoint = m_transform->computeTapPointForZone(*targetZone);
+    const QRect viewport = m_transform->snapshot().viewport;
+    if (!viewport.contains(tapPoint)) {
+        m_error = QString("target tap point (%1,%2) is outside viewport")
+            .arg(tapPoint.x())
+            .arg(tapPoint.y());
+        return FlowStepStatus::Failed;
+    }
+
+    if (!m_device->tap(tapPoint.x(), tapPoint.y())) {
+        m_error = QString("tap (%1,%2) failed while entering target zone %3")
+            .arg(tapPoint.x())
+            .arg(tapPoint.y())
+            .arg(targetZone->zoneId);
+        return FlowStepStatus::Failed;
+    }
+
+    m_runtimeContext->lastPinnedZoneId = targetZone->zoneId;
+    m_runtimeContext->lastNavigationAction = "tap-target-zone";
+    m_runtimeMessage = QString("tap target zone: id=%1 name=%2 point=(%3,%4)")
+        .arg(targetZone->zoneId)
+        .arg(targetZone->displayName)
+        .arg(tapPoint.x())
+        .arg(tapPoint.y());
+    return FlowStepStatus::Done;
+}
+
+QString TapTargetWorldZoneStep::takeRuntimeMessage()
+{
+    const QString message = m_runtimeMessage;
+    m_runtimeMessage.clear();
+    return message;
+}
+
+QString TapTargetWorldZoneStep::errorString() const
+{
+    return m_error;
+}
+
+VerifyTargetWorldZoneEntryStep::VerifyTargetWorldZoneEntryStep(VisionEngine* vision,
+                                                               WorldZoneCatalog* zoneCatalog,
+                                                               WorldMapRuntimeContext* runtimeContext,
+                                                               QString stepName)
+    : m_vision(vision)
+    , m_zoneCatalog(zoneCatalog)
+    , m_runtimeContext(runtimeContext)
+    , m_name(std::move(stepName))
+{
+}
+
+QString VerifyTargetWorldZoneEntryStep::name() const
+{
+    return m_name;
+}
+
+FlowStepStatus VerifyTargetWorldZoneEntryStep::execute(const QImage& frame)
+{
+    m_error.clear();
+    m_runtimeMessage.clear();
+
+    if (!m_vision) {
+        m_error = "vision is null";
+        return FlowStepStatus::Failed;
+    }
+    if (!m_zoneCatalog) {
+        m_error = "world zone catalog is null";
+        return FlowStepStatus::Failed;
+    }
+    if (!m_runtimeContext) {
+        m_error = "world map runtime context is null";
+        return FlowStepStatus::Failed;
+    }
+    if (!m_runtimeContext->hasTargetZoneRequest()) {
+        m_error = "target zone request is missing";
+        return FlowStepStatus::Failed;
+    }
+
+    const WorldZoneMetadata* targetZone =
+        m_zoneCatalog->findById(m_runtimeContext->gotoRequest.targetZoneId);
+    if (!targetZone) {
+        m_error = QString("target zone not found: id=%1")
+            .arg(m_runtimeContext->gotoRequest.targetZoneId);
+        return FlowStepStatus::Failed;
+    }
+    if (targetZone->entryTemplateKey.isEmpty()) {
+        m_error = QString("target zone %1 does not define entry template key")
+            .arg(targetZone->zoneId);
+        return FlowStepStatus::Failed;
+    }
+
+    QPoint matchPoint;
+    if (!m_vision->findTemplate(frame, targetZone->entryTemplateKey, matchPoint, -1.0)) {
+        return FlowStepStatus::Running;
+    }
+
+    m_runtimeContext->currentZoneId = targetZone->zoneId;
+    m_runtimeContext->currentZoneName = targetZone->displayName;
+    m_runtimeContext->lastResolutionSource = "entry-template";
+    m_runtimeContext->lastNavigationAction = "entered-target-zone";
+    m_runtimeMessage = QString("target zone entered: id=%1 name=%2 template=%3")
+        .arg(targetZone->zoneId)
+        .arg(targetZone->displayName)
+        .arg(targetZone->entryTemplateKey);
+    return FlowStepStatus::Done;
+}
+
+QString VerifyTargetWorldZoneEntryStep::takeRuntimeMessage()
+{
+    const QString message = m_runtimeMessage;
+    m_runtimeMessage.clear();
+    return message;
+}
+
+QString VerifyTargetWorldZoneEntryStep::errorString() const
 {
     return m_error;
 }

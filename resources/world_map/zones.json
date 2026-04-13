@@ -96,6 +96,7 @@
       "zoneId": 22,
       "key": "na_ocean_sw_b",
       "displayName": "NA海域西南B",
+      "entryTemplateKey": "worldMap.erosionLeveling1",
       "aliases": ["NA海域西南B", "NA Ocean SW Sector B"],
       "worldAnchor": { "x": 396.0, "y": 405.0 },
       "missionAnchor": { "x": 360.0, "y": 347.0 },

@@ -52,6 +52,12 @@ QList<TemplateMetadata> buildTemplateDefinitions()
             "resources/templates/worldMap.title.png",
             0.9,
             "Title of world map"
+        },
+        {
+            "worldMap.erosionLeveling1",
+            "resources/templates/worldMap.erosionLeveling1.png",
+            0.7,
+            "Entry confirmation for default erosion leveling target zone"
         }
     };
 }

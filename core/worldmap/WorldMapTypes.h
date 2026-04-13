@@ -31,6 +31,7 @@ struct WorldZoneMetadata
     int zoneId = -1;
     QString key;
     QString displayName;
+    QString entryTemplateKey;
     QStringList aliases;
 
     QPointF worldAnchor; //世界坐标系中的锚点位置（通常是该区域的中心或一个显著位置）

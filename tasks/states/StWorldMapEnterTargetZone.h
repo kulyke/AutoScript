@@ -1,26 +1,26 @@
-﻿#ifndef STWORLDMAPFOCUSTARGETZONE_H
-#define STWORLDMAPFOCUSTARGETZONE_H
+﻿#ifndef STWORLDMAPENTERTARGETZONE_H
+#define STWORLDMAPENTERTARGETZONE_H
 
 #include "StepFlowState.h"
 
 #include <memory>
 
-class DeviceController;
 class VisionEngine;
+class DeviceController;
 class WorldZoneCatalog;
 class WorldMapTransform;
 struct WorldMapRuntimeContext;
 
-class StWorldMapFocusTargetZone : public StepFlowState
+class StWorldMapEnterTargetZone : public StepFlowState
 {
 public:
-    StWorldMapFocusTargetZone(VisionEngine* vision,
+    StWorldMapEnterTargetZone(VisionEngine* vision,
                               DeviceController* device,
                               std::shared_ptr<WorldZoneCatalog> zoneCatalog,
                               std::shared_ptr<WorldMapTransform> transform,
                               std::shared_ptr<WorldMapRuntimeContext> runtimeContext,
                               QObject* parent = nullptr);
-    ~StWorldMapFocusTargetZone() override;
+    ~StWorldMapEnterTargetZone() override;
 
     QString name() const override;
 

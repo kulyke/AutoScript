@@ -48,6 +48,7 @@
 - Moved large-world service construction into `StWorldMapBootstrap` while preserving lifetime across downstream states with shared ownership.
 - Threaded `WorldMapGotoRequest` from task entry to bootstrap so future business routes can choose targets without pre-creating world-map services.
 - Moved the default `WorldMapGotoRequest` creation back into `StWorldMapBootstrap` and removed request threading from the pre-world-map menu states.
+- Completed the current jump-chain MVP by adding target-zone tap and entry-template verification after world-map focus.
 
 ## Current Flow
 
@@ -79,11 +80,15 @@
 - `StWorldMapFocusTargetZone`
   - Skip when no target zone request exists
   - Otherwise swipe the world map toward the target zone until centered or attempts are exhausted
-  - Complete the current navigation skeleton
+-  - Enter `StWorldMapEnterTargetZone`
+- `StWorldMapEnterTargetZone`
+  - Tap the centered target zone on the world map
+  - Wait for the target zone entry template to confirm arrival
+  - Complete the current jump-chain MVP
 
 ## Next Candidates
 
 - Add world-map template keys and calibration assets for pinned-zone, zone-type, and entry-state recognition.
-- Add pin verification and zone-type selection steps after target-zone focus.
+- Replace the current direct zone tap + entry-template shortcut with explicit pin verification and zone-type selection states.
 - Decide how business-level target selection should be injected into `StWorldMapBootstrap` without re-coupling the pre-world-map menu states.
 - Return to framework tests after the world-map navigation path reaches a runnable MVP.

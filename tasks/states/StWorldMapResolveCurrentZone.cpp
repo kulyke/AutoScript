@@ -41,6 +41,7 @@ StepFlowState* StWorldMapResolveCurrentZone::onFlowFinished()
 {
     setRuntimeMessage("[StWorldMapResolveCurrentZone] finished");
     return new StWorldMapFocusTargetZone(
+    m_vision,
         m_device,
         m_zoneCatalog,
         m_transform,

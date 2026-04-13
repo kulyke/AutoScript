@@ -19,6 +19,7 @@ class InitializeWorldMapStep : public FlowStep
 {
 public:
     InitializeWorldMapStep(VisionEngine* vision,
+                           DeviceController* device,
                            WorldZoneCatalog* zoneCatalog,
                            WorldMapTransform* transform,
                            QString stepName);
@@ -30,6 +31,7 @@ public:
 
 private:
     VisionEngine* m_vision;
+    DeviceController* m_device;
     WorldZoneCatalog* m_zoneCatalog;
     WorldMapTransform* m_transform;
     QString m_name;
@@ -90,6 +92,52 @@ private:
     QString m_runtimeMessage;
     int m_waitFrames = 0;
     int m_swipeAttempts = 0;
+};
+
+class TapTargetWorldZoneStep : public FlowStep
+{
+public:
+    TapTargetWorldZoneStep(DeviceController* device,
+                           WorldZoneCatalog* zoneCatalog,
+                           WorldMapTransform* transform,
+                           WorldMapRuntimeContext* runtimeContext,
+                           QString stepName);
+
+    QString name() const override;
+    FlowStepStatus execute(const QImage& frame) override;
+    QString takeRuntimeMessage() override;
+    QString errorString() const override;
+
+private:
+    DeviceController* m_device;
+    WorldZoneCatalog* m_zoneCatalog;
+    WorldMapTransform* m_transform;
+    WorldMapRuntimeContext* m_runtimeContext;
+    QString m_name;
+    QString m_error;
+    QString m_runtimeMessage;
+};
+
+class VerifyTargetWorldZoneEntryStep : public FlowStep
+{
+public:
+    VerifyTargetWorldZoneEntryStep(VisionEngine* vision,
+                                   WorldZoneCatalog* zoneCatalog,
+                                   WorldMapRuntimeContext* runtimeContext,
+                                   QString stepName);
+
+    QString name() const override;
+    FlowStepStatus execute(const QImage& frame) override;
+    QString takeRuntimeMessage() override;
+    QString errorString() const override;
+
+private:
+    VisionEngine* m_vision;
+    WorldZoneCatalog* m_zoneCatalog;
+    WorldMapRuntimeContext* m_runtimeContext;
+    QString m_name;
+    QString m_error;
+    QString m_runtimeMessage;
 };
 
 #endif

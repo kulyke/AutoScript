@@ -86,6 +86,7 @@ bool WorldZoneCatalog::loadFromJson(const QString& path, QString* error)
         zone.zoneId = zoneObject.value("zoneId").toInt(-1);
         zone.key = zoneObject.value("key").toString();
         zone.displayName = zoneObject.value("displayName").toString();
+        zone.entryTemplateKey = zoneObject.value("entryTemplateKey").toString();
         zone.worldAnchor = parsePoint(zoneObject.value("worldAnchor").toObject());
         zone.missionAnchor = parsePoint(zoneObject.value("missionAnchor").toObject());
         zone.regionId = zoneObject.value("regionId").toInt();

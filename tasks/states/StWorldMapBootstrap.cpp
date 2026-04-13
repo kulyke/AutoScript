@@ -29,6 +29,7 @@ StWorldMapBootstrap::StWorldMapBootstrap(VisionEngine* vision,
 
     addStep(std::make_unique<InitializeWorldMapStep>(
         m_vision,
+        m_device,
         m_zoneCatalog.get(),
         m_worldMapTransform.get(),
         "Initialize world map context"));

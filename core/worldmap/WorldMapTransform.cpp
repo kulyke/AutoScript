@@ -194,7 +194,7 @@ bool WorldMapTransform::rebuildSnapshot(const QPointF& worldCenter,
     m_snapshot.referenceMapSize = m_calibration.referenceMapSize;
     m_snapshot.worldCenter = worldCenter;
     m_snapshot.screenCenter = m_calibration.fixedScreenCenter;
-    m_snapshot.page = page;
+    m_snapshot.page = WorldMapPage::WorldMap;
     m_snapshot.worldToScreen = worldToScreenTransform;
     m_snapshot.screenToWorld = screenToWorldTransform;
     return true;

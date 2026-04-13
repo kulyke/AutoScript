@@ -71,7 +71,9 @@
 - `tasks/states/StWorldMapResolveCurrentZone.h`: state declaration for resolving the current world zone after bootstrap.
 - `tasks/states/StWorldMapResolveCurrentZone.cpp`: step-flow state that derives the current zone from the active world center while retaining shared ownership of map-session services.
 - `tasks/states/StWorldMapFocusTargetZone.h`: state declaration for centering the requested target zone on the world map.
-- `tasks/states/StWorldMapFocusTargetZone.cpp`: step-flow state that performs swipe-based target-zone focusing, cleanly skips when no goto request is present, and retains shared ownership of map-session services.
+- `tasks/states/StWorldMapFocusTargetZone.cpp`: step-flow state that performs swipe-based target-zone focusing and hands off to target-zone entry.
+- `tasks/states/StWorldMapEnterTargetZone.h`: state declaration for tapping the centered target zone and verifying arrival.
+- `tasks/states/StWorldMapEnterTargetZone.cpp`: step-flow state that taps the focused zone and waits for the configured entry template to confirm the jump.
 - `tasks/states/StShop.h` / `tasks/states/StShop.cpp`: removed from the repository; shop verification now lives inside `StMainMenuToShop`.
 
 ## tasks/steps
@@ -79,7 +81,7 @@
 - `tasks/steps/TemplateSteps.h`: reusable template-related steps, fixed device actions, retry wrapper, and timing wrappers.
 - `tasks/steps/TemplateSteps.cpp`: implementations of template wait/click, tap/swipe/keyevent, retry, frame delay, and step timeout, with explicit action failure reporting and retry runtime messages.
 - `tasks/steps/WorldMapSteps.h`: world-map-specific step declarations.
-- `tasks/steps/WorldMapSteps.cpp`: world-map bootstrap, current-zone resolution, and target-zone focus steps for metadata loading, transform initialization, zone inference, and swipe-based centering.
+- `tasks/steps/WorldMapSteps.cpp`: world-map bootstrap, current-zone resolution, target-zone focus, target-zone tap, and entry verification steps for metadata loading and jump-chain execution.
 
 ## vision
 
@@ -106,6 +108,6 @@
 
 ## Current Optimization Focus
 
-- World-map navigation now creates both map-session services and the default goto request inside bootstrap, then safely retains the session through target-zone focus; the next implementation focus is pinned-zone verification and zone-type selection.
+- World-map navigation now creates both map-session services and the default goto request inside bootstrap, then executes focus -> tap -> entry verification as the current jump-chain MVP; the next implementation focus is pin verification and zone-type selection.
 - Keep framework tests deferred until the world-map jump flow reaches a runnable MVP.
 - Treat further build cleanup as low-priority infrastructure work: reduce broad source globbing when CMake changes again.

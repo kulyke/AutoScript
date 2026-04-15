@@ -144,14 +144,13 @@ QPoint WorldMapTransform::computeTapPointForZone(const WorldZoneMetadata& zone) 
     return worldToScreen(zone.worldAnchor).toPoint();
 }
 
-QPointF WorldMapTransform::computeSwipeVectorToward(const QPointF& worldPoint,
+QPointF WorldMapTransform::computeSwipeVectorToward(const QPointF& delta,
                                                     const QSizeF& swipeLimit) const
 {
     if (!m_snapshot.valid) {
         return QPointF();
     }
 
-    const QPointF delta = worldToScreen(worldPoint) - m_snapshot.screenCenter;
     return clampVector(delta, swipeLimit);
 }
 

@@ -30,22 +30,22 @@ QList<TemplateMetadata> buildTemplateDefinitions()
             "Title of attack menu"
         },
         {
-            "attackMenu.worldOcean.button",
-            "resources/templates/attackMenu.worldOcean.button.png",
+            "attackMenu.worldZone.button",
+            "resources/templates/attackMenu.worldZone.button.png",
             0.9,
-            "World Ocean button on attack menu"
+            "World Zone button on attack menu"
         },
         {
-            "worldOcean.title",
-            "resources/templates/worldOcean.title.png",
+            "worldZone.title",
+            "resources/templates/worldZone.title.png",
             0.9,
-            "Title of world ocean"
+            "Title of world zone"
         },
         {
-            "worldOcean.worldMap.button",
-            "resources/templates/worldOcean.worldMap.button.png",
+            "worldZone.worldMap.button",
+            "resources/templates/worldZone.worldMap.button.png",
             0.9,
-            "World Map button on world ocean"
+            "World Map button on world zone"
         },
         {
             "worldMap.title",
@@ -58,6 +58,30 @@ QList<TemplateMetadata> buildTemplateDefinitions()
             "resources/templates/worldMap.erosionLeveling1.png",
             0.7,
             "Entry confirmation for default erosion leveling target zone"
+        },
+        {
+            "worldMap.enterZone.button",
+            "resources/templates/worldMap.enterZone.button.png",
+            0.9,
+            "Enter zone button on world map after clicking a zone"
+        },
+        {
+            "worldZone.planBattle.button",
+            "resources/templates/worldZone.planBattle.button.png",
+            0.7,
+            "Plan battle button on world zone page"
+        },
+        {
+            "planBattle.title",
+            "resources/templates/planBattle.title.png",
+            0.9,
+            "Title of battle planning page"
+        },
+        {
+            "planBattle.confirm.button",
+            "resources/templates/planBattle.confirm.button.png",
+            0.9,
+            "Confirm battle plan button on battle planning page"
         }
     };
 }

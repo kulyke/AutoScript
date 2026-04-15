@@ -147,13 +147,9 @@ FlowStepStatus ResolveCurrentWorldZoneStep::execute(const QImage& frame)
         m_error = "world map runtime context is null";
         return FlowStepStatus::Failed;
     }
-    // if (!m_transform->isValid()) {
-    //     m_error = "world map transform is invalid";
-    //     return FlowStepStatus::Failed;
-    // }
 
     // const QPointF worldCenter = m_transform->worldCenter();
-    const QPointF currentWorldZonePoint = QPoint(260.0, 560.0); //测试用：直接使用一个固定的世界坐标点来解析当前区域，避免实际解析过程中可能遇到的各种问题
+    const QPointF currentWorldZonePoint = QPoint(323.0, 1004.0); //测试用：直接使用一个固定的世界坐标点来解析当前区域，避免实际解析过程中可能遇到的各种问题
     const WorldZoneMetadata* zone = m_zoneCatalog->nearestToWorldPoint(currentWorldZonePoint);
     if (!zone) {
         m_error = "failed to resolve current world zone from world center";
@@ -284,7 +280,7 @@ FlowStepStatus FocusTargetWorldZoneStep::execute(const QImage& frame)
     }
 
     const QPointF worldOffset =
-        m_transform->computeSwipeVectorToward(targetZone->worldAnchor, kWorldMapFocusSwipeLimit);
+        m_transform->computeSwipeVectorToward(delta, kWorldMapFocusSwipeLimit);
     if (std::abs(worldOffset.x()) < 1.0 && std::abs(worldOffset.y()) < 1.0) {
         m_error = QString("computed zero focus offset for target zone %1")
             .arg(targetZone->zoneId);

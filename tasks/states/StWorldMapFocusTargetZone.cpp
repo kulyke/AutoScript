@@ -41,11 +41,10 @@ QString StWorldMapFocusTargetZone::name() const
 StepFlowState* StWorldMapFocusTargetZone::onFlowFinished()
 {
     setRuntimeMessage("[StWorldMapFocusTargetZone] finished");
-    return nullptr;
-    // return new StWorldMapEnterTargetZone(
-    //     m_vision,
-    //     m_device,
-    //     m_zoneCatalog,
-    //     m_transform,
-    //     m_runtimeContext);
+    return new StWorldMapEnterTargetZone(
+        m_vision,
+        m_device,
+        m_zoneCatalog,
+        m_transform,
+        m_runtimeContext);
 }

@@ -46,7 +46,7 @@ public:
       * @param swipeLimit 滑动限制，表示每次滑动的最大屏幕坐标偏移量，过大可能导致滑动过度，过小则可能需要多次滑动才能完成对焦。这个值需要根据游戏界面的设计和实际测试进行调整，通常设置在200-300像素之间比较合理。
       * @return 计算得到的屏幕坐标偏移向量，表示从当前视图中心到目标世界坐标点在屏幕上的偏移量。这个向量可以直接用于执行滑动操作，以将视图对准目标区域。
      */
-    QPointF computeSwipeVectorToward(const QPointF& worldPoint,
+    QPointF computeSwipeVectorToward(const QPointF& delta,
                                      const QSizeF& swipeLimit) const;
 
 private:

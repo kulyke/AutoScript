@@ -19,13 +19,13 @@ StAttackMenuToWorldOcean::StAttackMenuToWorldOcean(VisionEngine *vision,
             std::make_unique<ClickTemplateStep>(
                 m_vision,
                 m_device,
-                "attackMenu.worldOcean.button",
+                "attackMenu.worldZone.button",
                 -1.0,
-                "Click attackMenu world ocean button"),
+                "Click attackMenu world zone button"),
             3,
-            "Timeout click attackMenu world ocean button"),
+            "Timeout click attackMenu world zone button"),
         2,
-        "Retry click attackMenu world ocean button"));
+        "Retry click attackMenu world zone button"));
 
     addStep(std::make_unique<DelayFramesStep>(3, "Wait page transition"));
 
@@ -33,13 +33,13 @@ StAttackMenuToWorldOcean::StAttackMenuToWorldOcean(VisionEngine *vision,
         std::make_unique<TimeoutStep>(
             std::make_unique<WaitTemplateStep>(
                 m_vision,
-                "worldOcean.title",
+                "worldZone.title",
                 -1.0,
-                "Wait world ocean title"),
+                "Wait world zone title"),
             3,
-            "Timeout wait world ocean title"),
+            "Timeout wait world zone title"),
         1,
-        "Retry wait world ocean title"));
+        "Retry wait world zone title"));
 }
 
 StAttackMenuToWorldOcean::~StAttackMenuToWorldOcean()

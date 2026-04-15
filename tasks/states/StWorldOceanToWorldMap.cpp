@@ -19,13 +19,13 @@ StWorldOceanToWorldMap::StWorldOceanToWorldMap(VisionEngine *vision,
             std::make_unique<ClickTemplateStep>(
                 m_vision,
                 m_device,
-                "worldOcean.worldMap.button",
+                "worldZone.worldMap.button",
                 -1.0,
-                "Click world ocean world map button"),
+                "Click world zone world map button"),
             3,
-            "Timeout click world ocean world map button"),
+            "Timeout click world zone world map button"),
         2,
-        "Retry click world ocean world map button"));
+        "Retry click world zone world map button"));
 
     addStep(std::make_unique<DelayFramesStep>(3, "Wait page transition"));
 

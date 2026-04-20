@@ -2,11 +2,12 @@
 
 ## Root
 
-- `CMakeLists.txt`: project build configuration, target-scoped Qt/OpenCV linking, post-build resource and DLL copy, and `AutoScriptTests` test target.
+- `CMakeLists.txt`: project build configuration, target-scoped Qt/OpenCV linking, post-build resource/DLL/script copy, and `AutoScriptTests` test target.
 - `docs/world-map-zone-design.md`: design draft for Operation Siren zone metadata, coordinate spaces, and transform service boundaries.
 - `docs/world-map-jump-state-machine.md`: StepFlowState-style state machine sketch for large-world cross-zone jumping.
 - `progress.md`: completed work and next-step tracking.
 - `architecture.md`: file responsibility overview.
+- `requirements-paddleocr.txt`: Python dependency list for the PaddleOCR helper runtime.
 
 ## test
 
@@ -26,6 +27,10 @@
 - `automation/ScreenCapture.cpp`: ADB screenshot capture, PNG decoding, frame emission.
 - `automation/DeviceController.h`: device action interface for tap/swipe/key/text.
 - `automation/DeviceController.cpp`: ADB command execution for device operations.
+
+## scripts
+
+- `scripts/paddle_ocr_service.py`: persistent Python OCR worker that keeps a PaddleOCR instance warm, disables unnecessary document preprocessing models for this digits-only scenario, and returns digit-only oil recognition results over JSON lines.
 
 ## config
 
@@ -74,21 +79,32 @@
 - `tasks/states/StWorldMapFocusTargetZone.cpp`: step-flow state that performs swipe-based target-zone focusing and hands off to target-zone entry.
 - `tasks/states/StWorldMapEnterTargetZone.h`: state declaration for tapping the centered target zone and verifying arrival.
 - `tasks/states/StWorldMapEnterTargetZone.cpp`: step-flow state that taps the focused zone and waits for the configured entry template to confirm the jump.
+- `tasks/states/WorldOceanPlanBattleRuntimeContext.h`: shared runtime counters, depletion flag, and last observed oil value for plan-battle monitoring and recovery loops.
+- `tasks/states/StWorldOceanPlanBattleMode.h`: state declaration for entering official plan battle mode in a world zone.
+- `tasks/states/StWorldOceanPlanBattleMode.cpp`: step-flow state that opens plan battle mode and hands off to the monitoring loop.
+- `tasks/states/StWorldOceanMonitorPlanBattle.h`: state declaration for continuous plan-battle monitoring.
+- `tasks/states/StWorldOceanMonitorPlanBattle.cpp`: frame-driven monitor that OCRs the current oil value, watches for stop conditions, and transitions into recovery states.
+- `tasks/states/StWorldOceanRecoverOil.h`: state declaration for oil recovery during plan battle.
+- `tasks/states/StWorldOceanRecoverOil.cpp`: step-flow state that stops plan battle, refills oil, and restarts plan battle.
+- `tasks/states/StWorldOceanHandleMeowfficerShop.h`: state declaration for meowfficer shop handling during plan battle.
+- `tasks/states/StWorldOceanHandleMeowfficerShop.cpp`: step-flow state that buys energy supply boxes when available and ends monitoring when the inventory is depleted.
 - `tasks/states/StShop.h` / `tasks/states/StShop.cpp`: removed from the repository; shop verification now lives inside `StMainMenuToShop`.
 
 ## tasks/steps
 
 - `tasks/steps/TemplateSteps.h`: reusable template-related steps, fixed device actions, retry wrapper, and timing wrappers.
 - `tasks/steps/TemplateSteps.cpp`: implementations of template wait/click, tap/swipe/keyevent, retry, frame delay, and step timeout, with explicit action failure reporting and retry runtime messages.
+- `tasks/steps/WorldOceanSteps.h`: plan-battle-specific custom step declarations.
+- `tasks/steps/WorldOceanSteps.cpp`: custom steps for meowfficer supply purchase and depletion detection.
 - `tasks/steps/WorldMapSteps.h`: world-map-specific step declarations.
 - `tasks/steps/WorldMapSteps.cpp`: world-map bootstrap, current-zone resolution, target-zone focus, target-zone tap, and entry verification steps for metadata loading and jump-chain execution.
 
 ## vision
 
 - `vision/TemplateCatalog.h`: template metadata model and lookup interface.
-- `vision/TemplateCatalog.cpp`: current logical template key registry and default thresholds.
+- `vision/TemplateCatalog.cpp`: current logical template key registry and default thresholds, including the oil-add anchor template used by lightweight oil OCR.
 - `vision/VisionEngine.h`: high-level vision API used by task logic.
-- `vision/VisionEngine.cpp`: image conversion, template metadata resolution, cached template loading, and matching.
+- `vision/VisionEngine.cpp`: image conversion, template metadata resolution, cached template loading, template matching, anchor-based oil ROI extraction, a persistent PaddleOCR bridge, and a local fallback digit recognizer.
 - `vision/TemplateMatcher.h`: low-level matcher interface.
 - `vision/TemplateMatcher.cpp`: multi-scale template matching with NMS and score output.
 
@@ -108,6 +124,8 @@
 
 ## Current Optimization Focus
 
-- World-map navigation now creates both map-session services and the default goto request inside bootstrap, then executes focus -> tap -> entry verification as the current jump-chain MVP; the next implementation focus is pin verification and zone-type selection.
+- World-map navigation now creates both map-session services and the default goto request inside bootstrap, then executes focus -> tap -> entry verification as the current jump-chain MVP.
+- Plan battle mode now prefers PaddleOCR for oil detection, falls back to the local ROI-based digit recognizer when needed, and can trigger oil refill when the recognized oil value is at most 10.
+- PaddleOCR runtime now depends on the workspace .venv and caches its downloaded PP-OCRv5 models under the local user Paddle model cache on first launch.
 - Keep framework tests deferred until the world-map jump flow reaches a runnable MVP.
 - Treat further build cleanup as low-priority infrastructure work: reduce broad source globbing when CMake changes again.

@@ -95,12 +95,17 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/resources/templates"
     COMMAND ${CMAKE_COMMAND} -E make_directory
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/resources/world_map"
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/scripts"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_SOURCE_DIR}/resources/templates"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/resources/templates"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_SOURCE_DIR}/resources/world_map"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/resources/world_map"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/scripts"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/scripts"
     COMMENT "Copy template resources to output directory"
 )
 
@@ -155,6 +160,15 @@ target_link_libraries(AutoScriptTests
     Qt5::Test
     debug ${OpenCV_LIBS_DEBUG}
     optimized ${OpenCV_LIBS_RELEASE}
+)
+
+add_custom_command(TARGET AutoScriptTests POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "$<TARGET_FILE_DIR:AutoScriptTests>/scripts"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/scripts"
+        "$<TARGET_FILE_DIR:AutoScriptTests>/scripts"
+    COMMENT "Copy OCR scripts to test output directory"
 )
 
 add_test(NAME AutoScriptTests COMMAND AutoScriptTests)

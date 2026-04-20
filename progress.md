@@ -49,6 +49,11 @@
 - Threaded `WorldMapGotoRequest` from task entry to bootstrap so future business routes can choose targets without pre-creating world-map services.
 - Moved the default `WorldMapGotoRequest` creation back into `StWorldMapBootstrap` and removed request threading from the pre-world-map menu states.
 - Completed the current jump-chain MVP by adding target-zone tap and entry-template verification after world-map focus.
+- Added a plan-battle monitoring loop skeleton with low-oil recovery and meowfficer supply handling states.
+- Replaced plan-battle low-oil template detection with a lightweight oil OCR anchored by the oil add button, triggering refill when oil <= 10.
+- Shifted oil OCR toward an Alas-like path: ROI anchored by the oil add button, letter-color extraction, and restricted digit recognition instead of plain grayscale thresholding.
+- Added a persistent PaddleOCR helper-process path for oil recognition, with the existing local digit recognizer kept as fallback when PaddleOCR is unavailable or returns no digits.
+- Installed and validated a working PaddleOCR 3.x environment in the project .venv; the helper script now starts successfully and the first launch downloads PP-OCRv5 model files into the local Paddle cache.
 
 ## Current Flow
 
@@ -85,10 +90,25 @@
   - Tap the centered target zone on the world map
   - Wait for the target zone entry template to confirm arrival
   - Complete the current jump-chain MVP
+- `StWorldOceanPlanBattleMode`
+  - Open plan battle mode in the entered world zone
+  - Hand off to `StWorldOceanMonitorPlanBattle`
+- `StWorldOceanMonitorPlanBattle`
+  - OCR the current oil value near the oil add button, preferring PaddleOCR and falling back to local recognition
+  - Trigger oil recovery when oil <= 10
+  - Route to oil recovery or meowfficer supply handling
+- `StWorldOceanRecoverOil`
+  - Stop plan battle, refill oil, then restart plan battle
+- `StWorldOceanHandleMeowfficerShop`
+  - Enter meowfficer shop, buy an energy supply box if available, return, then restart plan battle
+  - Stop monitoring when supply boxes are depleted
 
 ## Next Candidates
 
 - Add world-map template keys and calibration assets for pinned-zone, zone-type, and entry-state recognition.
 - Replace the current direct zone tap + entry-template shortcut with explicit pin verification and zone-type selection states.
 - Decide how business-level target selection should be injected into `StWorldMapBootstrap` without re-coupling the pre-world-map menu states.
+- Install and validate the new PaddleOCR helper environment, then tune the oil ROI or fallback path against real screenshots if recognition drifts.
+- Tune the PaddleOCR-backed oil recognition against real world-zone screenshots and decide whether to keep `ocr(...)` or switch to `predict(...)` for better digit-only stability.
+- Capture the missing plan-battle monitoring templates so the new recovery states can trigger at runtime.
 - Return to framework tests after the world-map navigation path reaches a runnable MVP.

@@ -82,6 +82,60 @@ QList<TemplateMetadata> buildTemplateDefinitions()
             "resources/templates/planBattle.confirm.button.png",
             0.9,
             "Confirm battle plan button on battle planning page"
+        },
+        {
+            "worldZone.planBattle.stop.button",
+            "resources/templates/worldZone.planBattle.stop.button.png",
+            0.7,
+            "Stop plan battle button on world zone page"
+        },
+        {
+            "worldZone.planBattle.noAutoEvent.message",
+            "resources/templates/worldZone.planBattle.noAutoEvent.message.png",
+            0.9,
+            "Plan battle stopped because no auto event is available"
+        },
+        {
+            "worldZone.oil.add.button",
+            "resources/templates/worldZone.oil.add.button.png",
+            0.9,
+            "Oil add button on world zone page"
+        },
+        {
+            "worldZone.oil.refill.confirm.button",
+            "resources/templates/worldZone.oil.refill.confirm.button.png",
+            0.9,
+            "Oil refill confirm button"
+        },
+        {
+            "worldZone.meowfficer.button",
+            "resources/templates/worldZone.meowfficer.button.png",
+            0.9,
+            "Meowfficer shop button on world zone page"
+        },
+        {
+            "meowfficerShop.title",
+            "resources/templates/meowfficerShop.title.png",
+            0.9,
+            "Title of meowfficer shop"
+        },
+        {
+            "meowfficerShop.energySupplyBox.button",
+            "resources/templates/meowfficerShop.energySupplyBox.button.png",
+            0.9,
+            "Energy supply box item in meowfficer shop"
+        },
+        {
+            "meowfficerShop.energySupplyBox.empty",
+            "resources/templates/meowfficerShop.energySupplyBox.empty.png",
+            0.9,
+            "Indicator that energy supply boxes are depleted"
+        },
+        {
+            "meowfficerShop.buy.confirm.button",
+            "resources/templates/meowfficerShop.buy.confirm.button.png",
+            0.9,
+            "Confirm purchase button in meowfficer shop"
         }
     };
 }

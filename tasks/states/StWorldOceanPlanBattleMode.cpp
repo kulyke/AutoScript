@@ -3,14 +3,20 @@
 #include "devicecontroller.h"
 #include "steps/TemplateSteps.h"
 
+#include "StWorldOceanMonitorPlanBattle.h"
+#include "WorldOceanPlanBattleRuntimeContext.h"
+
 #include <QDebug>
 
 StWorldOceanPlanBattleMode::StWorldOceanPlanBattleMode(VisionEngine *vision,
                                                        DeviceController *device,
+                                                       std::shared_ptr<WorldOceanPlanBattleRuntimeContext> runtimeContext,
                                                    QObject *parent)
     : StepFlowState(parent)
     , m_vision(vision)
     , m_device(device)
+    , m_runtimeContext(runtimeContext ? std::move(runtimeContext)
+                                      : std::make_shared<WorldOceanPlanBattleRuntimeContext>())
 {
     addStep(std::make_unique<RetryStep>(
         std::make_unique<TimeoutStep>(
@@ -66,5 +72,8 @@ QString StWorldOceanPlanBattleMode::name() const
 StepFlowState* StWorldOceanPlanBattleMode::onFlowFinished()
 {
     setRuntimeMessage("[StWorldOceanPlanBattleMode] finished");
-    return nullptr;
+    return new StWorldOceanMonitorPlanBattle(
+        m_vision,
+        m_device,
+        m_runtimeContext);
 }

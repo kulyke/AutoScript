@@ -94,6 +94,9 @@ private:
     int m_swipeAttempts = 0;
 };
 
+/**
+ * @brief 点击目标区域步骤
+ */
 class TapTargetWorldZoneStep : public FlowStep
 {
 public:
@@ -118,6 +121,9 @@ private:
     QString m_runtimeMessage;
 };
 
+/**
+ * @brief 验证目标区域入口步骤
+ */
 class VerifyTargetWorldZoneEntryStep : public FlowStep
 {
 public:

@@ -5,10 +5,12 @@
 #include <QImage>
 #include <QPoint>
 #include <QHash>
+#include <optional>
 #include <opencv2/opencv.hpp>
 
 #include "TemplateMatcher.h"
 
+class QProcess;
 struct TemplateMetadata;
 /**
  * @brief  视觉引擎，执行具体的视觉任务
@@ -21,6 +23,7 @@ class VisionEngine : public QObject
 public:
 
     explicit VisionEngine(QObject *parent = nullptr);
+    ~VisionEngine() override;
     /**
      * @brief 在屏幕截图中查找模板图像
      * @param screen        屏幕截图
@@ -30,6 +33,12 @@ public:
      * @return              是否找到匹配
      */
     bool findTemplate(const QImage& screen, const QString& templateRef, QPoint& pt, double threshold = -1.0);
+    /**
+     * @brief 识别世界区域页面中的当前石油值
+     * @param screen 当前屏幕截图
+     * @return 识别出的石油值；识别失败时返回空
+     */
+    std::optional<int> readWorldZoneOilCount(const QImage& screen);
 
 private:
     /**
@@ -52,11 +61,39 @@ private:
      * @return 加载的模板图像，如果加载失败则返回空的cv::Mat
      */
     cv::Mat loadTemplate(const QString& templateRef, QString& resolvedPath, double& resolvedThreshold);
+    /**
+     * @brief 识别石油值的OCR结果字符串转换为整数
+     * @param ocrResult OCR识别结果字符串
+     * @return 识别出的石油值；转换失败时返回空
+     */
+    cv::Mat locateWorldZoneOilRoi(const cv::Mat& screenMat);
+    /**
+     * @brief 使用Paddle OCR识别石油值
+     * @param oilRoi 石油值区域的图像
+     * @return 识别出的石油值；识别失败时返回空
+     */
+    std::optional<int> readWorldZoneOilCountWithPaddle(const cv::Mat& oilRoi);
+    /**
+     * @brief 使用传统图像处理方法识别石油值
+     * @param oilRoi 石油值区域的图像
+     * @return 识别出的石油值；识别失败时返回空
+     */
+    std::optional<int> readWorldZoneOilCountFallback(const cv::Mat& oilRoi);
+    
+    bool ensurePaddleOcrProcess();
+    void shutdownPaddleOcrProcess();
+    QString paddleOcrPythonProgram() const;
+    QString paddleOcrScriptPath() const;
 
 private:
     TemplateMatcher m_matcher;
     // 模板缓存，避免重复加载同一模板图像
     QHash<QString, cv::Mat> m_templateCache;
+
+    // Paddle OCR 相关成员
+    QProcess* m_paddleOcrProcess = nullptr;
+    bool m_paddleOcrDisabled = false;
+    int m_paddleOcrFailureCount = 0;
 
 };
 

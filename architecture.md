@@ -30,7 +30,7 @@
 
 ## scripts
 
-- `scripts/paddle_ocr_service.py`: persistent Python OCR worker that keeps a PaddleOCR instance warm, disables unnecessary document preprocessing models for this digits-only scenario, and returns digit-only oil recognition results over JSON lines.
+- `scripts/paddle_ocr_service.py`: persistent Python OCR worker that keeps a TextRecognition model warm for digit-only oil OCR, normalizes the structured result payload, and returns digit-only recognition results over JSON lines.
 
 ## config
 
@@ -125,7 +125,7 @@
 ## Current Optimization Focus
 
 - World-map navigation now creates both map-session services and the default goto request inside bootstrap, then executes focus -> tap -> entry verification as the current jump-chain MVP.
-- Plan battle mode now prefers PaddleOCR for oil detection, falls back to the local ROI-based digit recognizer when needed, and can trigger oil refill when the recognized oil value is at most 10.
+- Plan battle mode now prefers a Paddle-backed TextRecognition helper for oil detection, falls back to the local ROI-based digit recognizer when needed, and can trigger oil refill when the recognized oil value is at most 10.
 - PaddleOCR runtime now depends on the workspace .venv and caches its downloaded PP-OCRv5 models under the local user Paddle model cache on first launch.
 - Keep framework tests deferred until the world-map jump flow reaches a runnable MVP.
 - Treat further build cleanup as low-priority infrastructure work: reduce broad source globbing when CMake changes again.

@@ -441,7 +441,7 @@ cv::Mat VisionEngine::locateWorldZoneOilRoi(const cv::Mat& screenMat)
         return cv::Mat();
     }
 
-    const int offset = 8;
+    const int offset = 10;
     const cv::Rect anchorRect(fullTemplate.cols - anchorSize + offset, 0, anchorSize - offset, fullTemplate.rows);
     const cv::Mat anchorTemplate = fullTemplate(anchorRect).clone();
     cv::imwrite("debug_anchor_template.png", anchorTemplate);
@@ -454,7 +454,7 @@ cv::Mat VisionEngine::locateWorldZoneOilRoi(const cv::Mat& screenMat)
 
     const int matchLeft = matchCenter.x() - fullTemplate.cols / 2;
     const int matchTop = matchCenter.y() - fullTemplate.rows / 2;
-    const int oilWidth = std::min(50, fullTemplate.cols - anchorRect.width);
+    const int oilWidth = std::min(30, fullTemplate.cols - anchorRect.width);
     const int oilHeight = fullTemplate.rows;
     const int oilLeft = matchLeft + fullTemplate.cols - anchorRect.width - oilWidth;
     const int oilTop = matchTop;
@@ -568,9 +568,10 @@ std::optional<int> VisionEngine::readWorldZoneOilCount(const QImage& screen)
 
     cv::imwrite(QString("debug_oil_roi_%1.png").arg(count++).toStdString(), oilRoi);
 
-    if (const std::optional<int> paddleValue = readWorldZoneOilCountWithPaddle(oilRoi)) {
-        return paddleValue;
-    }
+    // if (const std::optional<int> paddleValue = readWorldZoneOilCountWithPaddle(oilRoi)) {
+    //     return paddleValue;
+    // }
 
-    return readWorldZoneOilCountFallback(oilRoi);
+    // return readWorldZoneOilCountFallback(oilRoi);
+    return readWorldZoneOilCountWithPaddle(oilRoi);
 }

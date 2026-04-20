@@ -9,18 +9,43 @@ import numpy as np
 
 
 def build_ocr():
-    from paddleocr import PaddleOCR
+    from paddleocr._models import TextRecognition
 
-    return PaddleOCR(
-        lang="en",
-        use_doc_orientation_classify=False,
-        use_doc_unwarping=False,
-        use_textline_orientation=False,
+    return TextRecognition(
+        model_name="PP-OCRv5_mobile_rec",
     )
 
 
 def normalize_digits(text: str) -> str:
     return "".join(re.findall(r"\d+", text or ""))
+
+
+def collect_candidate_texts(value):
+    texts = []
+
+    if isinstance(value, str):
+        texts.append(value)
+        return texts
+
+    if isinstance(value, dict):
+        handled_keys = set()
+        for key in ("rec_text", "text", "label"):
+            candidate = value.get(key)
+            if isinstance(candidate, str):
+                texts.append(candidate)
+                handled_keys.add(key)
+        for key, nested_value in value.items():
+            if key in handled_keys:
+                continue
+            texts.extend(collect_candidate_texts(nested_value))
+        return texts
+
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            texts.extend(collect_candidate_texts(item))
+        return texts
+
+    return texts
 
 
 def iter_variants(image: np.ndarray):
@@ -38,22 +63,11 @@ def iter_variants(image: np.ndarray):
 
 def recognize_digits(ocr, image: np.ndarray) -> str:
     for variant in iter_variants(image):
-        result = ocr.ocr(variant, det=False, rec=True, cls=False)
+        result = ocr.predict(variant)
         if not result:
             continue
 
-        texts = []
-        for item in result:
-            if isinstance(item, list):
-                for sub_item in item:
-                    if isinstance(sub_item, (list, tuple)) and sub_item:
-                        candidate = sub_item[0] if isinstance(sub_item[0], str) else ""
-                        texts.append(candidate)
-            elif isinstance(item, tuple) and item:
-                candidate = item[0] if isinstance(item[0], str) else ""
-                texts.append(candidate)
-
-        digits = normalize_digits("".join(texts))
+        digits = normalize_digits("".join(collect_candidate_texts(result)))
         if digits:
             return digits
 

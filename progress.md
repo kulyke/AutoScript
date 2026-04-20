@@ -54,6 +54,8 @@
 - Shifted oil OCR toward an Alas-like path: ROI anchored by the oil add button, letter-color extraction, and restricted digit recognition instead of plain grayscale thresholding.
 - Added a persistent PaddleOCR helper-process path for oil recognition, with the existing local digit recognizer kept as fallback when PaddleOCR is unavailable or returns no digits.
 - Installed and validated a working PaddleOCR 3.x environment in the project .venv; the helper script now starts successfully and the first launch downloads PP-OCRv5 model files into the local Paddle cache.
+- Replaced the helper script's full PaddleOCR pipeline with the pure TextRecognition model path after confirming the 3.x full OCR pipeline was incompatible with the current Windows runtime while recognition-only inference worked.
+- Fixed duplicate digit extraction in the helper script so recognition-only results no longer concatenate the same `rec_text` twice during JSON result flattening.
 
 ## Current Flow
 
@@ -110,5 +112,6 @@
 - Decide how business-level target selection should be injected into `StWorldMapBootstrap` without re-coupling the pre-world-map menu states.
 - Install and validate the new PaddleOCR helper environment, then tune the oil ROI or fallback path against real screenshots if recognition drifts.
 - Tune the PaddleOCR-backed oil recognition against real world-zone screenshots and decide whether to keep `ocr(...)` or switch to `predict(...)` for better digit-only stability.
+- Validate the new TextRecognition-only helper against real world-zone oil screenshots and tune the ROI width/scale variants if low-value digits still drift.
 - Capture the missing plan-battle monitoring templates so the new recovery states can trigger at runtime.
 - Return to framework tests after the world-map navigation path reaches a runnable MVP.

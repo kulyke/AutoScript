@@ -70,7 +70,8 @@ private:
     TaskManager* m_taskManager;
     
     std::shared_ptr<AdbConfig> m_adbConfig;
-    QThread* m_taskThread;//任务线程，承载截图、视觉和任务调度，避免阻塞 UI
+    QThread* m_captureThread;//截图线程，避免 adb screencap 阻塞任务调度
+    QThread* m_taskThread;//任务线程，承载设备控制、视觉和任务调度，避免阻塞 UI
     
     //当前屏幕截图
     QImage m_currentFrame;

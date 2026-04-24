@@ -4,6 +4,7 @@
 #include "../../core/FlowStep.h"
 
 #include <memory>
+#include <QElapsedTimer>
 #include <QPoint>
 
 class VisionEngine;
@@ -124,6 +125,22 @@ private:
     QString m_name;
 };
 
+class DelayMillisecondsStep : public FlowStep
+{
+public:
+    DelayMillisecondsStep(int durationMs, QString stepName);
+
+    QString name() const override;
+    FlowStepStatus execute(const QImage& frame) override;
+    void reset() override;
+
+private:
+    int m_durationMs;
+    QString m_name;
+    QElapsedTimer m_elapsedTimer;
+    bool m_started = false;
+};
+
 class TimeoutStep : public FlowStep
 {
 public:
@@ -144,6 +161,29 @@ private:
     QString m_name;
     QString m_error;
     QString m_runtimeMessage;
+};
+
+class TimeoutMillisecondsStep : public FlowStep
+{
+public:
+    TimeoutMillisecondsStep(std::unique_ptr<FlowStep> innerStep,
+                            int maxDurationMs,
+                            QString stepName = QString());
+
+    QString name() const override;
+    FlowStepStatus execute(const QImage& frame) override;
+    void reset() override;
+    QString takeRuntimeMessage() override;
+    QString errorString() const override;
+
+private:
+    std::unique_ptr<FlowStep> m_innerStep;
+    int m_maxDurationMs;
+    QString m_name;
+    QString m_error;
+    QString m_runtimeMessage;
+    QElapsedTimer m_elapsedTimer;
+    bool m_started = false;
 };
 
 class RetryStep : public FlowStep

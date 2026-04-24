@@ -15,9 +15,9 @@
 
 namespace {
 
-constexpr int kWorldMapFocusSettleFrames = 3; //焦点设定后需要等待的帧数，以确保界面稳定下来，避免过早地进行下一步操作导致误触或界面未更新的问题
+constexpr int kWorldMapFocusSettleMs = 140; //焦点设定后等待界面稳定的时间，按毫秒计时以避免低帧率放大延迟
 constexpr int kWorldMapFocusMaxSwipes = 4; //最大连续滑动次数限制，防止在某些情况下（如解析错误或界面异常）导致过度滑动，增加误触风险。这个值可以根据实际情况调整，通常设置为3-5次比较合理。
-constexpr int kWorldMapFocusSwipeDurationMs = 350; //每次滑动的持续时间，过短可能导致滑动不被识别，过长则可能增加操作时间。350ms是一个相对适中的值，可以根据设备和游戏的响应情况进行调整。
+constexpr int kWorldMapFocusSwipeDurationMs = 280; //每次滑动的持续时间，适度收紧以减少聚焦耗时，同时保留足够的手势识别稳定性。
 constexpr double kWorldMapFocusTolerancePx = 24.0; //焦点容忍度（像素），表示当目标点与当前点的屏幕坐标差距在这个范围内时，认为已经成功对焦，无需继续滑动。这个值需要根据游戏界面的设计和实际测试进行调整，通常设置在20-30像素之间比较合理。
 const QSizeF kWorldMapFocusSwipeLimit(280.0, 180.0); //焦点滑动限制（像素），表示每次滑动的最大屏幕坐标偏移量，过大可能导致滑动过度，过小则可能需要多次滑动才能完成对焦。这个值需要根据游戏界面的设计和实际测试进行调整，通常设置在200-300像素之间比较合理。
 
@@ -233,9 +233,12 @@ FlowStepStatus FocusTargetWorldZoneStep::execute(const QImage& frame)
         return FlowStepStatus::Failed;
     }
 
-    if (m_waitFrames > 0) {
-        --m_waitFrames;
-        return FlowStepStatus::Running;
+    if (m_waitingSettle) {
+        if (m_settleTimer.elapsed() < kWorldMapFocusSettleMs) {
+            return FlowStepStatus::Running;
+        }
+        m_waitingSettle = false;
+        m_settleTimer.invalidate();
     }
 
     if (!m_runtimeContext->hasTargetZoneRequest()) {
@@ -306,7 +309,8 @@ FlowStepStatus FocusTargetWorldZoneStep::execute(const QImage& frame)
     }
 
     ++m_swipeAttempts;
-    m_waitFrames = kWorldMapFocusSettleFrames;
+    m_waitingSettle = true;
+    m_settleTimer.start();
     m_transform->setWorldCenter(m_transform->worldCenter() + worldOffset);
 
     m_runtimeContext->focusedZoneId = targetZone->zoneId;
@@ -324,7 +328,8 @@ void FocusTargetWorldZoneStep::reset()
 {
     m_error.clear();
     m_runtimeMessage.clear();
-    m_waitFrames = 0;
+    m_waitingSettle = false;
+    m_settleTimer.invalidate();
     m_swipeAttempts = 0;
 }
 

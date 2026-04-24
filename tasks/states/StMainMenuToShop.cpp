@@ -25,7 +25,7 @@ StMainMenuToShop::StMainMenuToShop(VisionEngine *vision, DeviceController *devic
         2,
         "Retry click shop button"));
 
-    addStep(std::make_unique<DelayFramesStep>(3, "Wait page transition"));
+    addStep(std::make_unique<DelayMillisecondsStep>(240, "Wait page transition"));
 
     addStep(std::make_unique<RetryStep>(
         std::make_unique<TimeoutStep>(

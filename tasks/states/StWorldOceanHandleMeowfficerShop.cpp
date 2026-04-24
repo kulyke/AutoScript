@@ -32,7 +32,7 @@ StWorldOceanHandleMeowfficerShop::StWorldOceanHandleMeowfficerShop(VisionEngine*
         2,
         "Retry click meowfficer shop button"));
 
-    addStep(std::make_unique<DelayFramesStep>(3, "Wait meowfficer shop transition"));
+    addStep(std::make_unique<DelayMillisecondsStep>(240, "Wait meowfficer shop transition"));
 
     addStep(std::make_unique<RetryStep>(
         std::make_unique<TimeoutStep>(
@@ -58,14 +58,14 @@ StWorldOceanHandleMeowfficerShop::StWorldOceanHandleMeowfficerShop(VisionEngine*
         1,
         "Retry purchase energy supply box"));
 
-    addStep(std::make_unique<DelayFramesStep>(3, "Wait purchase settle"));
+    addStep(std::make_unique<DelayMillisecondsStep>(220, "Wait purchase settle"));
 
     addStep(std::make_unique<KeyEventStep>(
         m_device,
         4,
         "Back from meowfficer shop"));
 
-    addStep(std::make_unique<DelayFramesStep>(3, "Wait return from meowfficer shop"));
+    addStep(std::make_unique<DelayMillisecondsStep>(240, "Wait return from meowfficer shop"));
 
     addStep(std::make_unique<RetryStep>(
         std::make_unique<TimeoutStep>(

@@ -3,6 +3,7 @@
 
 #include "StepFlowState.h"
 
+#include <QElapsedTimer>
 #include <memory>
 
 class VisionEngine;
@@ -28,7 +29,9 @@ private:
     VisionEngine* m_vision;
     DeviceController* m_device;
     std::shared_ptr<WorldOceanPlanBattleRuntimeContext> m_runtimeContext;
-    int m_observeFrames = 0; // 监视状态已观察的帧数
+    QElapsedTimer m_oilObserveTimer;
+    QElapsedTimer m_statusLogTimer;
+    bool m_hasObservedOilOnce = false;
 };
 
 #endif

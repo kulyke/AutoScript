@@ -251,6 +251,44 @@ FlowStepStatus DelayFramesStep::execute(const QImage& frame)
     return FlowStepStatus::Running;
 }
 
+DelayMillisecondsStep::DelayMillisecondsStep(int durationMs, QString stepName)
+    : m_durationMs(durationMs)
+    , m_name(std::move(stepName))
+{
+}
+
+QString DelayMillisecondsStep::name() const
+{
+    return m_name;
+}
+
+void DelayMillisecondsStep::reset()
+{
+    m_started = false;
+    m_elapsedTimer.invalidate();
+}
+
+FlowStepStatus DelayMillisecondsStep::execute(const QImage& frame)
+{
+    Q_UNUSED(frame);
+
+    if (m_durationMs <= 0) {
+        return FlowStepStatus::Done;
+    }
+
+    if (!m_started) {
+        m_started = true;
+        m_elapsedTimer.start();
+        return FlowStepStatus::Running;
+    }
+
+    if (m_elapsedTimer.elapsed() >= m_durationMs) {
+        return FlowStepStatus::Done;
+    }
+
+    return FlowStepStatus::Running;
+}
+
 TimeoutStep::TimeoutStep(std::unique_ptr<FlowStep> innerStep,
                          int maxFrames,
                          QString stepName)
@@ -319,6 +357,84 @@ FlowStepStatus TimeoutStep::execute(const QImage& frame)
 }
 
 QString TimeoutStep::errorString() const
+{
+    return m_error;
+}
+
+TimeoutMillisecondsStep::TimeoutMillisecondsStep(std::unique_ptr<FlowStep> innerStep,
+                                                 int maxDurationMs,
+                                                 QString stepName)
+    : m_innerStep(std::move(innerStep))
+    , m_maxDurationMs(maxDurationMs)
+    , m_name(std::move(stepName))
+{
+}
+
+QString TimeoutMillisecondsStep::name() const
+{
+    if (!m_name.isEmpty()) {
+        return m_name;
+    }
+    return m_innerStep ? m_innerStep->name() : QString("TimeoutMillisecondsStep");
+}
+
+void TimeoutMillisecondsStep::reset()
+{
+    m_error.clear();
+    m_runtimeMessage.clear();
+    m_started = false;
+    m_elapsedTimer.invalidate();
+    if (m_innerStep) {
+        m_innerStep->reset();
+    }
+}
+
+QString TimeoutMillisecondsStep::takeRuntimeMessage()
+{
+    if (!m_runtimeMessage.isEmpty()) {
+        const QString message = m_runtimeMessage;
+        m_runtimeMessage.clear();
+        return message;
+    }
+
+    return m_innerStep ? m_innerStep->takeRuntimeMessage() : QString();
+}
+
+FlowStepStatus TimeoutMillisecondsStep::execute(const QImage& frame)
+{
+    if (!m_innerStep) {
+        m_error = "inner step is null";
+        return FlowStepStatus::Failed;
+    }
+
+    if (!m_started) {
+        m_started = true;
+        m_elapsedTimer.start();
+    }
+
+    const FlowStepStatus status = m_innerStep->execute(frame);
+    if (status == FlowStepStatus::Done) {
+        return FlowStepStatus::Done;
+    }
+    if (status == FlowStepStatus::Failed) {
+        m_error = m_innerStep->errorString();
+        if (m_error.isEmpty()) {
+            m_error = QString("step '%1' failed").arg(m_innerStep->name());
+        }
+        return FlowStepStatus::Failed;
+    }
+
+    if (m_maxDurationMs > 0 && m_elapsedTimer.elapsed() >= m_maxDurationMs) {
+        m_error = QString("step '%1' timed out after %2 ms")
+            .arg(m_innerStep->name())
+            .arg(m_maxDurationMs);
+        return FlowStepStatus::Failed;
+    }
+
+    return FlowStepStatus::Running;
+}
+
+QString TimeoutMillisecondsStep::errorString() const
 {
     return m_error;
 }

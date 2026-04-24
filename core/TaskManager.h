@@ -69,7 +69,7 @@ private:
     QQueue<TaskBase*> m_tasks;//任务队列，按照优先级排序
     bool m_running = false;
     bool m_processingFrame = false; //是否正在处理当前帧，防止重入
-    int m_minFrameIntervalMs = 120; //最小帧间隔，单位毫秒，过快时会丢帧以降低状态机驱动频率
+    int m_minFrameIntervalMs = 40; //最小帧间隔，单位毫秒；在截图独立线程下允许更快驱动状态机
     QElapsedTimer m_frameTimer; //帧计时器，用于控制帧率
 
 };

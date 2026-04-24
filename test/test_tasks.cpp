@@ -148,7 +148,9 @@ class FrameworkTests : public QObject
 private slots:
 	void stepFlowStateProducesSuccessRuntimeMessage();
 	void taskBaseBuffersRuntimeMessageAcrossCompletion();
+	void delayMillisecondsStepWaitsByElapsedTime();
 	void timeoutStepFailsAfterFrameLimit();
+	void timeoutMillisecondsStepFailsAfterElapsedTime();
 	void retryStepResetsInnerStepAndReportsRetry();
 };
 
@@ -179,6 +181,18 @@ void FrameworkTests::taskBaseBuffersRuntimeMessageAcrossCompletion()
 	QCOMPARE(task.takeRuntimeMessage(), QString("[CompletionState] flow completed"));
 }
 
+void FrameworkTests::delayMillisecondsStepWaitsByElapsedTime()
+{
+	DelayMillisecondsStep delayStep(30, "Delay 30 ms");
+
+	QCOMPARE(delayStep.execute(QImage()), FlowStepStatus::Running);
+	QTest::qSleep(40);
+	QCOMPARE(delayStep.execute(QImage()), FlowStepStatus::Done);
+
+	delayStep.reset();
+	QCOMPARE(delayStep.execute(QImage()), FlowStepStatus::Running);
+}
+
 void FrameworkTests::timeoutStepFailsAfterFrameLimit()
 {
 	TimeoutStep timeoutStep(
@@ -191,6 +205,21 @@ void FrameworkTests::timeoutStepFailsAfterFrameLimit()
 	QCOMPARE(timeoutStep.execute(QImage()), FlowStepStatus::Running);
 	QCOMPARE(timeoutStep.execute(QImage()), FlowStepStatus::Failed);
 	QVERIFY(timeoutStep.errorString().contains("timed out after 2 frames"));
+}
+
+void FrameworkTests::timeoutMillisecondsStepFailsAfterElapsedTime()
+{
+	TimeoutMillisecondsStep timeoutStep(
+		std::make_unique<ScriptedStep>(
+			"WaitForeverMs",
+			std::vector<ScriptedStep::Result>{{FlowStepStatus::Running, QString(), QString()}}),
+		20,
+		"Timeout milliseconds wrapper");
+
+	QCOMPARE(timeoutStep.execute(QImage()), FlowStepStatus::Running);
+	QTest::qSleep(30);
+	QCOMPARE(timeoutStep.execute(QImage()), FlowStepStatus::Failed);
+	QVERIFY(timeoutStep.errorString().contains("timed out after 20 ms"));
 }
 
 void FrameworkTests::retryStepResetsInnerStepAndReportsRetry()

@@ -56,6 +56,10 @@
 - Installed and validated a working PaddleOCR 3.x environment in the project .venv; the helper script now starts successfully and the first launch downloads PP-OCRv5 model files into the local Paddle cache.
 - Replaced the helper script's full PaddleOCR pipeline with the pure TextRecognition model path after confirming the 3.x full OCR pipeline was incompatible with the current Windows runtime while recognition-only inference worked.
 - Fixed duplicate digit extraction in the helper script so recognition-only results no longer concatenate the same `rec_text` twice during JSON result flattening.
+- Analyzed step-flow latency from runtime logs and confirmed the dominant delay comes from slow effective frame delivery plus single-thread serialization of capture/device/task work, not from the StepFlowState loop itself.
+- Reduced runtime latency by moving `ScreenCapture` onto its own thread, lowering TaskManager frame gating, and replacing hot-path frame-count delays with millisecond-based waits.
+- Added regression coverage for `DelayMillisecondsStep` and fixed the world-map focus settle path so it resumes immediately once the elapsed-time wait is satisfied.
+- Pushed the hot navigation path further by converting key state wrappers from frame-count timeouts to millisecond timeouts, shrinking fixed transition waits, and switching plan-battle monitoring from frame-based sampling to elapsed-time sampling.
 
 ## Current Flow
 
@@ -113,5 +117,7 @@
 - Install and validate the new PaddleOCR helper environment, then tune the oil ROI or fallback path against real screenshots if recognition drifts.
 - Tune the PaddleOCR-backed oil recognition against real world-zone screenshots and decide whether to keep `ocr(...)` or switch to `predict(...)` for better digit-only stability.
 - Validate the new TextRecognition-only helper against real world-zone oil screenshots and tune the ROI width/scale variants if low-value digits still drift.
+- Reduce interaction latency by decoupling screenshot capture from device/task execution and by replacing frame-count-based waits with elapsed-time or condition-based waits.
+- Measure real navigation timings after the capture-thread split and decide whether the remaining fixed millisecond waits can be tightened further or replaced with pure condition-based transitions.
 - Capture the missing plan-battle monitoring templates so the new recovery states can trigger at runtime.
 - Return to framework tests after the world-map navigation path reaches a runnable MVP.

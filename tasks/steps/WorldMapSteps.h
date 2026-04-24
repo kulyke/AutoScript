@@ -3,6 +3,7 @@
 
 #include "../../core/FlowStep.h"
 
+#include <QElapsedTimer>
 #include <QString>
 
 class VisionEngine;
@@ -90,7 +91,8 @@ private:
     QString m_name;
     QString m_error;
     QString m_runtimeMessage;
-    int m_waitFrames = 0;
+    QElapsedTimer m_settleTimer;
+    bool m_waitingSettle = false;
     int m_swipeAttempts = 0;
 };
 

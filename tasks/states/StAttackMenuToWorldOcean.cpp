@@ -15,28 +15,28 @@ StAttackMenuToWorldOcean::StAttackMenuToWorldOcean(VisionEngine *vision,
     , m_device(device)
 {
     addStep(std::make_unique<RetryStep>(
-        std::make_unique<TimeoutStep>(
+        std::make_unique<TimeoutMillisecondsStep>(
             std::make_unique<ClickTemplateStep>(
                 m_vision,
                 m_device,
                 "attackMenu.worldZone.button",
                 -1.0,
                 "Click attackMenu world zone button"),
-            3,
+            1800,
             "Timeout click attackMenu world zone button"),
         2,
         "Retry click attackMenu world zone button"));
 
-    addStep(std::make_unique<DelayFramesStep>(3, "Wait page transition"));
+    addStep(std::make_unique<DelayMillisecondsStep>(100, "Wait page transition"));
 
     addStep(std::make_unique<RetryStep>(
-        std::make_unique<TimeoutStep>(
+        std::make_unique<TimeoutMillisecondsStep>(
             std::make_unique<WaitTemplateStep>(
                 m_vision,
                 "worldZone.title",
                 -1.0,
                 "Wait world zone title"),
-            3,
+            4200,
             "Timeout wait world zone title"),
         1,
         "Retry wait world zone title"));

@@ -15,28 +15,28 @@ StMainMenuToAttackMenu::StMainMenuToAttackMenu(VisionEngine *vision,
     , m_device(device)
 {
     addStep(std::make_unique<RetryStep>(
-        std::make_unique<TimeoutStep>(
+        std::make_unique<TimeoutMillisecondsStep>(
             std::make_unique<ClickTemplateStep>(
                 m_vision,
                 m_device,
                 "mainMenu.attack.button",
                 -1.0,
                 "Click mainMenu attack button"),
-            3,
+            1800,
             "Timeout click mainMenu attack button"),
         2,
         "Retry click mainMenu attack button"));
 
-    addStep(std::make_unique<DelayFramesStep>(3, "Wait page transition"));
+    addStep(std::make_unique<DelayMillisecondsStep>(100, "Wait page transition"));
 
     addStep(std::make_unique<RetryStep>(
-        std::make_unique<TimeoutStep>(
+        std::make_unique<TimeoutMillisecondsStep>(
             std::make_unique<WaitTemplateStep>(
                 m_vision,
                 "attackMenu.title",
                 -1.0,
                 "Wait attack menu title"),
-            3,
+            3500,
             "Timeout wait attack menu title"),
         1,
         "Retry wait attack menu title"));

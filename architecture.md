@@ -11,7 +11,7 @@
 
 ## test
 
-- `test/test_tasks.cpp`: QtTest-based framework tests for StepFlowState, TaskBase, RetryStep, and TimeoutStep.
+- `test/test_tasks.cpp`: QtTest-based framework tests for StepFlowState, TaskBase, RetryStep, frame-based and millisecond-based timeout wrappers, and millisecond-based delay timing.
 - `test/test_matcher.cpp`: placeholder for future vision matcher tests.
 
 ## app
@@ -83,7 +83,7 @@
 - `tasks/states/StWorldOceanPlanBattleMode.h`: state declaration for entering official plan battle mode in a world zone.
 - `tasks/states/StWorldOceanPlanBattleMode.cpp`: step-flow state that opens plan battle mode and hands off to the monitoring loop.
 - `tasks/states/StWorldOceanMonitorPlanBattle.h`: state declaration for continuous plan-battle monitoring.
-- `tasks/states/StWorldOceanMonitorPlanBattle.cpp`: frame-driven monitor that OCRs the current oil value, watches for stop conditions, and transitions into recovery states.
+- `tasks/states/StWorldOceanMonitorPlanBattle.cpp`: elapsed-time-driven monitor that OCRs the current oil value on a millisecond cadence, watches for stop conditions, and transitions into recovery states.
 - `tasks/states/StWorldOceanRecoverOil.h`: state declaration for oil recovery during plan battle.
 - `tasks/states/StWorldOceanRecoverOil.cpp`: step-flow state that stops plan battle, refills oil, and restarts plan battle.
 - `tasks/states/StWorldOceanHandleMeowfficerShop.h`: state declaration for meowfficer shop handling during plan battle.
@@ -92,12 +92,12 @@
 
 ## tasks/steps
 
-- `tasks/steps/TemplateSteps.h`: reusable template-related steps, fixed device actions, retry wrapper, and timing wrappers.
-- `tasks/steps/TemplateSteps.cpp`: implementations of template wait/click, tap/swipe/keyevent, retry, frame delay, and step timeout, with explicit action failure reporting and retry runtime messages.
+- `tasks/steps/TemplateSteps.h`: reusable template-related steps, fixed device actions, retry wrapper, and both frame-based and elapsed-time-based timing wrappers, including millisecond timeout wrappers for slow-frame paths.
+- `tasks/steps/TemplateSteps.cpp`: implementations of template wait/click, tap/swipe/keyevent, retry, frame delay, millisecond delay, frame timeout, and millisecond timeout, with explicit action failure reporting and retry runtime messages.
 - `tasks/steps/WorldOceanSteps.h`: plan-battle-specific custom step declarations.
 - `tasks/steps/WorldOceanSteps.cpp`: custom steps for meowfficer supply purchase and depletion detection.
 - `tasks/steps/WorldMapSteps.h`: world-map-specific step declarations.
-- `tasks/steps/WorldMapSteps.cpp`: world-map bootstrap, current-zone resolution, target-zone focus, target-zone tap, and entry verification steps for metadata loading and jump-chain execution.
+- `tasks/steps/WorldMapSteps.cpp`: world-map bootstrap, current-zone resolution, target-zone focus, target-zone tap, and entry verification steps for metadata loading and jump-chain execution, including millisecond-based settle timing after swipes.
 
 ## vision
 
@@ -119,8 +119,10 @@
 ## Runtime Threading Model
 
 - UI thread: `MainWindow`, visual rendering, user interaction.
-- worker thread: `ScreenCapture`, `DeviceController`, `VisionEngine`, `TaskManager`.
+- capture thread: `ScreenCapture` only.
+- task thread: `DeviceController`, `VisionEngine`, `TaskManager`.
 - frame flow: `ScreenCapture -> TaskManager -> TaskBase -> StepFlowState -> Vision/Device`.
+- current latency implication: screenshot capture no longer blocks task execution directly, and hot-path waits now depend on elapsed time instead of sparse frame arrival.
 
 ## Current Optimization Focus
 

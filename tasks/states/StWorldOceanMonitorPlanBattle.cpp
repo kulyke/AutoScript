@@ -8,6 +8,13 @@
 
 #include <QDebug>
 
+namespace {
+
+constexpr int kOilObserveIntervalMs = 700;
+constexpr int kMonitorStatusLogIntervalMs = 10000;
+
+}
+
 StWorldOceanMonitorPlanBattle::StWorldOceanMonitorPlanBattle(VisionEngine* vision,
                                                              DeviceController* device,
                                                              std::shared_ptr<WorldOceanPlanBattleRuntimeContext> runtimeContext,
@@ -41,10 +48,14 @@ StepFlowState* StWorldOceanMonitorPlanBattle::update(const QImage& frame)
         return nullptr;
     }
 
-    ++m_observeFrames;
+    const bool shouldObserveOil = m_vision
+        && (!m_hasObservedOilOnce
+            || !m_oilObserveTimer.isValid()
+            || m_oilObserveTimer.elapsed() >= kOilObserveIntervalMs);
 
-    // 每3帧观察一次石油值，过于频繁可能导致性能问题(这里可能存在场景切换和战斗状态识别不及时的问题，后续可以考虑增加额外的状态来专门处理场景切换和战斗结束的识别)
-    if (m_vision && (m_observeFrames == 1 || m_observeFrames % 3 == 0)) {
+    if (shouldObserveOil) {
+        m_hasObservedOilOnce = true;
+        m_oilObserveTimer.restart();
         const std::optional<int> oilValue = m_vision->readWorldZoneOilCount(frame);
         if (oilValue.has_value()) {
             qDebug()<<QString("Observed oil value: %1").arg(*oilValue);
@@ -73,7 +84,8 @@ StepFlowState* StWorldOceanMonitorPlanBattle::update(const QImage& frame)
     //     return nullptr;
     // }
 
-    if (m_observeFrames % 180 == 0) { // 每180帧更新一次监视状态消息
+    if (!m_statusLogTimer.isValid() || m_statusLogTimer.elapsed() >= kMonitorStatusLogIntervalMs) {
+        m_statusLogTimer.restart();
         setRuntimeMessage(QString("[StWorldOceanMonitorPlanBattle] monitoring plan battle; oil=%1 oilRecoveries=%2 supplyPurchases=%3")
                               .arg(m_runtimeContext->lastObservedOil)
                               .arg(m_runtimeContext->oilRecoveryCount)

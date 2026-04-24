@@ -23,6 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     m_adbConfig = std::make_shared<AdbConfig>();
+    m_captureThread = new QThread(this);
     m_taskThread = new QThread(this);
     
     createUI();
@@ -37,8 +38,8 @@ MainWindow::MainWindow(QWidget *parent)
     /* Screen Capture */
     m_capture = new ScreenCapture();
     m_capture->setConfig(m_adbConfig);
-    m_capture->moveToThread(m_taskThread);
-    connect(m_taskThread, &QThread::finished,
+    m_capture->moveToThread(m_captureThread);
+    connect(m_captureThread, &QThread::finished,
             m_capture, &QObject::deleteLater);
     connect(m_capture, &ScreenCapture::frameReady,this,
         [this](const QImage& img)->void {//更新当前帧并显示在界面上
@@ -90,6 +91,7 @@ MainWindow::MainWindow(QWidget *parent)
             m_taskManager, &TaskManager::onFrameReady,
             Qt::QueuedConnection);
 
+    m_captureThread->start();
     //启动任务管理器线程
     m_taskThread->start();
 
@@ -101,9 +103,19 @@ MainWindow::~MainWindow()
         QMetaObject::invokeMethod(m_taskManager,
                                   [this]() {
                                       m_taskManager->stop();
+                                  },
+                                  Qt::BlockingQueuedConnection);
+    }
+    if (m_capture) {
+        QMetaObject::invokeMethod(m_capture,
+                                  [this]() {
                                       m_capture->stop();
                                   },
                                   Qt::BlockingQueuedConnection);
+    }
+    if (m_captureThread) {
+        m_captureThread->quit();
+        m_captureThread->wait();
     }
     if (m_taskThread) {
         m_taskThread->quit();
@@ -270,14 +282,18 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 void MainWindow::onStart()
 {
     appendLog("Connecting to device");
-    appendLog("Start capture");
     appendLog("Task started");
     QMetaObject::invokeMethod(m_taskManager,
                               [this]() {
                                   m_device->disconnect();
                                   m_device->connect();
-                                  m_capture->start(50);
                                   m_taskManager->start();
+                              },
+                              Qt::QueuedConnection);
+    appendLog("Start capture");
+    QMetaObject::invokeMethod(m_capture,
+                              [this]() {
+                                  m_capture->start(50);
                               },
                               Qt::QueuedConnection);
     
@@ -286,10 +302,14 @@ void MainWindow::onStart()
 void MainWindow::onStop()
 {
     appendLog("Task stopped");
-    appendLog("Stop capture");
     QMetaObject::invokeMethod(m_taskManager,
                               [this]() {
                                   m_taskManager->stop();
+                              },
+                              Qt::QueuedConnection);
+    appendLog("Stop capture");                      
+    QMetaObject::invokeMethod(m_capture,
+                              [this]() {
                                   m_capture->stop();
                               },
                               Qt::QueuedConnection);

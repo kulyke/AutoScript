@@ -19,7 +19,7 @@
 - `app/main.cpp`: application entry, Qt message handler, log file initialization.
 - `app/mainwindow.h`: main window declaration, UI references, worker thread members.
 - `app/mainwindow.cpp`: main UI logic, thread setup, task creation/removal, start/stop orchestration, synchronous shutdown cleanup, and taskId-based table synchronization.
-- `app/mainwindow.cpp`: main UI logic, thread setup, task creation/removal, latest-frame capture wiring, synchronous shutdown cleanup, and taskId-based table synchronization.
+- `app/mainwindow.cpp`: main UI logic, thread setup, task creation/removal, latest-frame capture wiring, Paddle OCR prewarm scheduling, synchronous shutdown cleanup, and taskId-based table synchronization.
 - `app/mainwindow.ui`: Qt Designer layout for the main window.
 
 ## automation
@@ -85,7 +85,7 @@
 - `tasks/states/StWorldOceanPlanBattleMode.h`: state declaration for entering official plan battle mode in a world zone.
 - `tasks/states/StWorldOceanPlanBattleMode.cpp`: step-flow state that opens plan battle mode and hands off to the monitoring loop.
 - `tasks/states/StWorldOceanMonitorPlanBattle.h`: state declaration for continuous plan-battle monitoring.
-- `tasks/states/StWorldOceanMonitorPlanBattle.cpp`: elapsed-time-driven monitor that OCRs the current oil value on a millisecond cadence, watches for stop conditions, and transitions into recovery states.
+- `tasks/states/StWorldOceanMonitorPlanBattle.cpp`: stop-condition-driven monitor that reacts to `worldZone.planBattle.noAutoEvent.message`, taps the leave-reward button, then resolves meowfficer/oil outcomes on later stabilized frames before transitioning.
 - `tasks/states/StWorldOceanRecoverOil.h`: state declaration for oil recovery during plan battle.
 - `tasks/states/StWorldOceanRecoverOil.cpp`: step-flow state that stops plan battle, refills oil, and restarts plan battle.
 - `tasks/states/StWorldOceanRecoverOil.cpp`: step-flow state that first waits to return to the world-zone page, then stops plan battle, refills oil, and restarts plan battle.
@@ -107,7 +107,7 @@
 - `vision/TemplateCatalog.h`: template metadata model and lookup interface.
 - `vision/TemplateCatalog.cpp`: current logical template key registry and default thresholds, including the oil-add anchor template used by lightweight oil OCR.
 - `vision/VisionEngine.h`: high-level vision API used by task logic.
-- `vision/VisionEngine.cpp`: image conversion, template metadata resolution, cached template loading, template matching, anchor-based oil ROI extraction, a persistent PaddleOCR bridge with workspace-venv Python resolution, and a local fallback digit recognizer.
+- `vision/VisionEngine.cpp`: image conversion, template metadata resolution, cached template loading, template matching, anchor-based oil ROI extraction, a persistent PaddleOCR bridge with workspace-venv Python resolution and startup prewarm, and a local fallback digit recognizer.
 - `vision/TemplateMatcher.h`: low-level matcher interface.
 - `vision/TemplateMatcher.cpp`: multi-scale template matching with NMS and score output.
 

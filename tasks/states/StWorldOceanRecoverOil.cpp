@@ -18,19 +18,6 @@ StWorldOceanRecoverOil::StWorldOceanRecoverOil(VisionEngine* vision,
     , m_device(device)
     , m_runtimeContext(std::move(runtimeContext))
 {
-    // 确认已经回到世界区域页面，防止误点停止计划作战按钮导致无法继续执行后续步骤
-    addStep(std::make_unique<RetryStep>(
-        std::make_unique<TimeoutMillisecondsStep>(
-            std::make_unique<WaitTemplateStep>(
-                m_vision,
-                "worldZone.title",
-                -1.0,
-                "Wait world zone title before stopping plan battle"),
-            3000,
-            "Timeout wait world zone title before stopping plan battle"),
-        1,
-        "Retry wait world zone title before stopping plan battle"));
-
     addStep(std::make_unique<RetryStep>(
         std::make_unique<TimeoutMillisecondsStep>(
             std::make_unique<ClickTemplateStep>(

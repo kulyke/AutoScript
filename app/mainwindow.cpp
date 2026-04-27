@@ -95,6 +95,12 @@ MainWindow::MainWindow(QWidget *parent)
     //启动任务管理器线程
     m_taskThread->start();
 
+    QMetaObject::invokeMethod(m_vision,
+                              [this]() {
+                                  m_vision->warmUpPaddleOcr();
+                              },
+                              Qt::QueuedConnection);
+
 }
 
 MainWindow::~MainWindow()

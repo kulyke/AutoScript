@@ -24,6 +24,7 @@ public:
 
     explicit VisionEngine(QObject *parent = nullptr);
     ~VisionEngine() override;
+    void warmUpPaddleOcr();
     /**
      * @brief 在屏幕截图中查找模板图像
      * @param screen        屏幕截图

@@ -10,8 +10,8 @@
 
 namespace {
 
-constexpr int kOilObserveIntervalMs = 700;
-constexpr int kMonitorStatusLogIntervalMs = 10000;
+constexpr int kPostBattleOutcomeSettleMs = 300;
+constexpr int kPostBattleOutcomeTimeoutMs = 4000;
 
 }
 
@@ -48,61 +48,19 @@ StepFlowState* StWorldOceanMonitorPlanBattle::update(const QImage& frame)
         return nullptr;
     }
 
-    // const bool shouldObserveOil = m_vision
-    //     && (!m_hasObservedOilOnce
-    //         || !m_oilObserveTimer.isValid()
-    //         || m_oilObserveTimer.elapsed() >= kOilObserveIntervalMs);
-
-    // if (shouldObserveOil) {
-    //     m_hasObservedOilOnce = true;
-    //     m_oilObserveTimer.restart();
-    //     const std::optional<int> oilValue = m_vision->readWorldZoneOilCount(frame);
-    //     if (oilValue.has_value()) {
-    //         qDebug()<<QString("Observed oil value: %1").arg(*oilValue);
-    //         m_runtimeContext->lastObservedOil = *oilValue;
-    //         if (*oilValue <= 10) {
-    //             setRuntimeMessage(QString("[StWorldOceanMonitorPlanBattle] oil=%1 <= 10; recover oil")
-    //                                   .arg(*oilValue));
-    //             return new StWorldOceanRecoverOil(
-    //                 m_vision,
-    //                 m_device,
-    //                 m_runtimeContext);
-    //         }
-    //     }
-    // }
+    if (m_waitingPostBattleOutcome) {
+        return resolvePostBattleOutcome(frame);
+    }
 
     // 监测停战条件：如果检测到停战提示，优先点击停战界面的离开奖励按钮（如果有的话），因为它的停战按钮位置和正常停战后返回世界页的停战按钮位置重叠，容易误点导致监测到停战后直接结束计划作战了。
     if (hasTemplate(frame, "worldZone.planBattle.noAutoEvent.message")) {
         QPoint point;
         if (m_vision->findTemplate(frame, "worldZone.planBattle.leaveReward.button", point)) {
             if (m_device->tap(point.x(), point.y())) {
-                setRuntimeMessage("[StWorldOceanMonitorPlanBattle] plan battle ended; tapped leave reward button");
-                // 先检查猫官商店，因为它的停战按钮位置和正常停战后返回世界页的停战按钮位置重叠，容易误点导致监测到停战后直接结束计划作战了。
-                if (hasTemplate(frame, "worldZone.meowfficer.button")) {
-                    setRuntimeMessage("[StWorldOceanMonitorPlanBattle] meowfficer shop detected; handle supply purchase");
-                    return new StWorldOceanHandleMeowfficerShop(
-                    m_vision,
-                    m_device,
-                    m_runtimeContext);
-                }
-                qDebug() << "No meowfficer shop detected after tapping leave reward button; checking oil value to determine if we should enter recovery";
-                // 没有猫官商店，说明是正常的停战了，直接结束监测并进入恢复流程（如果有的话）
-                const std::optional<int> oilValue = m_vision->readWorldZoneOilCount(frame);
-                if (oilValue.has_value()) {
-                    qDebug()<<QString("Observed oil value: %1").arg(*oilValue);
-                    m_runtimeContext->lastObservedOil = *oilValue;
-                    if (*oilValue <= 10) {
-                        setRuntimeMessage(QString("[StWorldOceanMonitorPlanBattle] oil=%1 <= 10; recover oil")
-                                            .arg(*oilValue));
-                        return new StWorldOceanRecoverOil(
-                            m_vision,
-                            m_device,
-                            m_runtimeContext);
-                    }
-                } else {
-                    setRuntimeMessage("[StWorldOceanMonitorPlanBattle] failed to read oil value after plan battle ended; end monitoring without recovery");
-                    return nullptr;
-                }
+                m_waitingPostBattleOutcome = true;
+                m_postBattleTransitionTimer.restart();
+                setRuntimeMessage("[StWorldOceanMonitorPlanBattle] plan battle ended; tapped leave reward button and waiting for updated frame");
+                return this;
             } else {
                 setRuntimeMessage("[StWorldOceanMonitorPlanBattle] plan battle ended; failed to tap leave reward button");
                 return nullptr;
@@ -113,12 +71,67 @@ StepFlowState* StWorldOceanMonitorPlanBattle::update(const QImage& frame)
         }
     }
 
-    if (!m_statusLogTimer.isValid() || m_statusLogTimer.elapsed() >= kMonitorStatusLogIntervalMs) {
-        m_statusLogTimer.restart();
-        setRuntimeMessage(QString("[StWorldOceanMonitorPlanBattle] monitoring plan battle; oil=%1 oilRecoveries=%2 supplyPurchases=%3")
-                              .arg(m_runtimeContext->lastObservedOil)
-                              .arg(m_runtimeContext->oilRecoveryCount)
-                              .arg(m_runtimeContext->supplyBoxPurchaseCount));
+    return this;
+}
+
+StepFlowState* StWorldOceanMonitorPlanBattle::resolvePostBattleOutcome(const QImage& frame)
+{
+    if (!m_postBattleTransitionTimer.isValid()) {
+        m_postBattleTransitionTimer.start();
+        return this;
+    }
+
+    const qint64 elapsedMs = m_postBattleTransitionTimer.elapsed();
+    if (elapsedMs < kPostBattleOutcomeSettleMs) {
+        return this;
+    }
+
+    const auto clearPendingOutcome = [this]() {
+        m_waitingPostBattleOutcome = false;
+        m_postBattleTransitionTimer.invalidate();
+    };
+
+    if (!hasTemplate(frame, "worldZone.title")) {
+        if (elapsedMs >= kPostBattleOutcomeTimeoutMs) {
+            clearPendingOutcome();
+            setRuntimeMessage("[StWorldOceanMonitorPlanBattle] timed out waiting for world zone page after tapping leave reward button");
+            return nullptr;
+        }
+        return this;
+    }
+
+    if (hasTemplate(frame, "worldZone.meowfficer.button")) {
+        clearPendingOutcome();
+        setRuntimeMessage("[StWorldOceanMonitorPlanBattle] meowfficer shop detected after plan battle ended; handle supply purchase");
+        return new StWorldOceanHandleMeowfficerShop(
+            m_vision,
+            m_device,
+            m_runtimeContext);
+    }
+
+    const std::optional<int> oilValue = m_vision ? m_vision->readWorldZoneOilCount(frame) : std::nullopt;
+    if (oilValue.has_value()) {
+        qDebug() << QString("Observed oil value: %1").arg(*oilValue);
+        m_runtimeContext->lastObservedOil = *oilValue;
+        clearPendingOutcome();
+        if (*oilValue <= 10) {
+            setRuntimeMessage(QString("[StWorldOceanMonitorPlanBattle] oil=%1 <= 10; recover oil")
+                                  .arg(*oilValue));
+            return new StWorldOceanRecoverOil(
+                m_vision,
+                m_device,
+                m_runtimeContext);
+        }
+
+        setRuntimeMessage(QString("[StWorldOceanMonitorPlanBattle] plan battle ended; oil=%1 and no recovery is needed")
+                              .arg(*oilValue));
+        return nullptr;
+    }
+
+    if (elapsedMs >= kPostBattleOutcomeTimeoutMs) {
+        clearPendingOutcome();
+        setRuntimeMessage("[StWorldOceanMonitorPlanBattle] failed to read oil value after plan battle ended; end monitoring without recovery");
+        return nullptr;
     }
 
     return this;

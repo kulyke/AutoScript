@@ -109,7 +109,7 @@ QList<TemplateMetadata> buildTemplateDefinitions()
         {
             "worldZone.oil.add.button",
             "resources/templates/worldZone.oil.add.button.png",
-            0.9,
+            0.5,
             "Oil add button on world zone page"
         },
         {

@@ -260,6 +260,20 @@ VisionEngine::~VisionEngine()
     shutdownPaddleOcrProcess();
 }
 
+void VisionEngine::warmUpPaddleOcr()
+{
+    if (m_paddleOcrDisabled) {
+        return;
+    }
+
+    if (m_paddleOcrProcess && m_paddleOcrProcess->state() != QProcess::NotRunning) {
+        return;
+    }
+
+    qDebug() << "prewarming paddle OCR process";
+    ensurePaddleOcrProcess();
+}
+
 cv::Mat VisionEngine::QImageToMat(const QImage &img)
 {
     QImage rgb = img.convertToFormat(QImage::Format_RGB888);

@@ -25,13 +25,13 @@ public:
 private:
     StepFlowState* onFlowFinished() override;
     bool hasTemplate(const QImage& frame, const QString& key) const;
+    StepFlowState* resolvePostBattleOutcome(const QImage& frame);
 
     VisionEngine* m_vision;
     DeviceController* m_device;
     std::shared_ptr<WorldOceanPlanBattleRuntimeContext> m_runtimeContext;
-    // QElapsedTimer m_oilObserveTimer;
-    QElapsedTimer m_statusLogTimer;
-    // bool m_hasObservedOilOnce = false;
+    QElapsedTimer m_postBattleTransitionTimer;
+    bool m_waitingPostBattleOutcome = false;
 };
 
 #endif

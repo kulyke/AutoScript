@@ -18,33 +18,18 @@ StWorldOceanRecoverOil::StWorldOceanRecoverOil(VisionEngine* vision,
     , m_device(device)
     , m_runtimeContext(std::move(runtimeContext))
 {
-    //结束计划作战(关闭自律寻敌)
-    addStep(std::make_unique<RetryStep>(
-        std::make_unique<TimeoutMillisecondsStep>(
-            std::make_unique<ClickTemplateStep>(
-                m_vision,
-                m_device,
-                "worldZone.planBattle.stop.button",
-                -1.0,
-                "Click stop plan battle button"),
-            2200,
-            "Timeout click stop plan battle button"),
-        2,
-        "Retry click stop plan battle button"));
-
-    addStep(std::make_unique<DelayMillisecondsStep>(120, "Wait stop plan battle transition"));
-
+    // 确认已经回到世界区域页面，防止误点停止计划作战按钮导致无法继续执行后续步骤
     addStep(std::make_unique<RetryStep>(
         std::make_unique<TimeoutMillisecondsStep>(
             std::make_unique<WaitTemplateStep>(
                 m_vision,
                 "worldZone.title",
                 -1.0,
-                "Wait world zone title before oil refill"),
-            3200,
-            "Timeout wait world zone title before oil refill"),
+                "Wait world zone title before stopping plan battle"),
+            3000,
+            "Timeout wait world zone title before stopping plan battle"),
         1,
-        "Retry wait world zone title before oil refill"));
+        "Retry wait world zone title before stopping plan battle"));
 
     addStep(std::make_unique<RetryStep>(
         std::make_unique<TimeoutMillisecondsStep>(
@@ -58,7 +43,8 @@ StWorldOceanRecoverOil::StWorldOceanRecoverOil(VisionEngine* vision,
             "Timeout click oil add button"),
         2,
         "Retry click oil add button"));
-
+        
+    // 等待油量补给对话框出现，确认点击加油按钮后界面有响应；如果界面无响应可能是误点了其他按钮，导致后续步骤找不到预期模板而失败
     addStep(std::make_unique<DelayMillisecondsStep>(100, "Wait oil refill dialog"));
 
     addStep(std::make_unique<RetryStep>(
@@ -76,17 +62,17 @@ StWorldOceanRecoverOil::StWorldOceanRecoverOil(VisionEngine* vision,
 
     addStep(std::make_unique<DelayMillisecondsStep>(160, "Wait oil refill complete"));
 
-    addStep(std::make_unique<RetryStep>(
-        std::make_unique<TimeoutMillisecondsStep>(
-            std::make_unique<WaitTemplateStep>(
-                m_vision,
-                "worldZone.title",
-                -1.0,
-                "Wait world zone title after oil refill"),
-            3200,
-            "Timeout wait world zone title after oil refill"),
-        1,
-        "Retry wait world zone title after oil refill"));
+    // addStep(std::make_unique<RetryStep>(
+    //     std::make_unique<TimeoutMillisecondsStep>(
+    //         std::make_unique<WaitTemplateStep>(
+    //             m_vision,
+    //             "worldZone.title",
+    //             -1.0,
+    //             "Wait world zone title after oil refill"),
+    //         3200,
+    //         "Timeout wait world zone title after oil refill"),
+    //     1,
+    //     "Retry wait world zone title after oil refill"));
 }
 
 StWorldOceanRecoverOil::~StWorldOceanRecoverOil()

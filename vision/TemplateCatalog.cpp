@@ -17,6 +17,7 @@ QList<TemplateMetadata> buildTemplateDefinitions()
             0.9,
             "Shop title after entering shop"
         },
+        // 进攻相关模板
         {
             "mainMenu.attack.button",
             "resources/templates/mainMenu.attack.button.png",
@@ -35,6 +36,7 @@ QList<TemplateMetadata> buildTemplateDefinitions()
             0.9,
             "World Zone button on attack menu"
         },
+        // 世界区域相关模板
         {
             "worldZone.title",
             "resources/templates/worldZone.title.png",
@@ -47,6 +49,7 @@ QList<TemplateMetadata> buildTemplateDefinitions()
             0.9,
             "World Map button on world zone"
         },
+        // 世界地图相关模板
         {
             "worldMap.title",
             "resources/templates/worldMap.title.png",
@@ -65,6 +68,7 @@ QList<TemplateMetadata> buildTemplateDefinitions()
             0.9,
             "Enter zone button on world map after clicking a zone"
         },
+        // 计划作战相关模板
         {
             "worldZone.planBattle.button",
             "resources/templates/worldZone.planBattle.button.png",
@@ -96,6 +100,13 @@ QList<TemplateMetadata> buildTemplateDefinitions()
             "Plan battle stopped because no auto event is available"
         },
         {
+            "worldZone.planBattle.leaveReward.button",
+            "resources/templates/worldZone.planBattle.leaveReward.button.png",
+            0.9,
+            "Leave reward button on plan battle stop page"
+        },
+        // 油量相关模板
+        {
             "worldZone.oil.add.button",
             "resources/templates/worldZone.oil.add.button.png",
             0.9,
@@ -107,10 +118,11 @@ QList<TemplateMetadata> buildTemplateDefinitions()
             0.9,
             "Oil refill confirm button"
         },
+        // 猫官商店相关模板
         {
             "worldZone.meowfficer.button",
             "resources/templates/worldZone.meowfficer.button.png",
-            0.9,
+            0.5,
             "Meowfficer shop button on world zone page"
         },
         {

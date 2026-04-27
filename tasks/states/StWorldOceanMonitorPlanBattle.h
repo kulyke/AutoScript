@@ -29,9 +29,9 @@ private:
     VisionEngine* m_vision;
     DeviceController* m_device;
     std::shared_ptr<WorldOceanPlanBattleRuntimeContext> m_runtimeContext;
-    QElapsedTimer m_oilObserveTimer;
+    // QElapsedTimer m_oilObserveTimer;
     QElapsedTimer m_statusLogTimer;
-    bool m_hasObservedOilOnce = false;
+    // bool m_hasObservedOilOnce = false;
 };
 
 #endif

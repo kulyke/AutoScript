@@ -457,6 +457,8 @@ bool VisionEngine::findTemplate(const QImage& screen, const QString& templateRef
                 );
     if(ok) {
         qDebug() << "match success template=" << templateRef << "score=" << score;
+    } else {
+        qDebug() << "match failed template=" << templateRef << "score=" << score;
     }
     return ok;
 }
@@ -484,16 +486,16 @@ cv::Mat VisionEngine::locateWorldZoneOilRoi(const cv::Mat& screenMat)
 
     QPoint matchCenter;
     double score = 0.0;
-    if (!m_matcher.findTemplate(screenMat, fullTemplate, matchCenter, score, 0.7)) {
+    if (!m_matcher.findTemplate(screenMat, fullTemplate, matchCenter, score, 0.5)) {
         return cv::Mat();
     }
 
     const int matchLeft = matchCenter.x() - fullTemplate.cols / 2;
     const int matchTop = matchCenter.y() - fullTemplate.rows / 2;
     const int oilWidth = std::min(30, fullTemplate.cols - anchorRect.width);
-    const int oilHeight = fullTemplate.rows;
+    const int oilHeight = fullTemplate.rows - 8 * 2;
     const int oilLeft = matchLeft + fullTemplate.cols - anchorRect.width - oilWidth;
-    const int oilTop = matchTop;
+    const int oilTop = matchTop + 8;
 
     const cv::Rect screenBounds(0, 0, screenMat.cols, screenMat.rows);
     const cv::Rect oilRect = cv::Rect(oilLeft, oilTop, oilWidth, oilHeight) & screenBounds;

@@ -63,6 +63,7 @@
 - Fixed application shutdown so the runtime stops screen capture, disconnects frame delivery, and clears queued tasks synchronously; this now destroys long-running monitor states such as `StWorldOceanMonitorPlanBattle` during close instead of leaving them alive until thread teardown.
 - Fixed stale-frame backlog by changing `TaskManager` to coalesce capture input down to the latest frame; oil OCR logs now track the live screen more closely, and shutdown no longer waits behind minutes of queued old frames.
 - Fixed the Paddle OCR helper startup path so `VisionEngine` now prefers the workspace `.venv` interpreter over a PATH-resolved system `python`, preventing missing-module failures such as `ModuleNotFoundError: No module named 'cv2'` at helper startup.
+- Hardened oil recovery entry so `StWorldOceanRecoverOil` waits for `worldZone.title` before clicking the stop-plan-battle button, preventing battle-scene auto-search controls from being misidentified as the world-zone stop button during scene transitions.
 
 ## Current Flow
 

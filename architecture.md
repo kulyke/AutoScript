@@ -88,6 +88,7 @@
 - `tasks/states/StWorldOceanMonitorPlanBattle.cpp`: elapsed-time-driven monitor that OCRs the current oil value on a millisecond cadence, watches for stop conditions, and transitions into recovery states.
 - `tasks/states/StWorldOceanRecoverOil.h`: state declaration for oil recovery during plan battle.
 - `tasks/states/StWorldOceanRecoverOil.cpp`: step-flow state that stops plan battle, refills oil, and restarts plan battle.
+- `tasks/states/StWorldOceanRecoverOil.cpp`: step-flow state that first waits to return to the world-zone page, then stops plan battle, refills oil, and restarts plan battle.
 - `tasks/states/StWorldOceanHandleMeowfficerShop.h`: state declaration for meowfficer shop handling during plan battle.
 - `tasks/states/StWorldOceanHandleMeowfficerShop.cpp`: step-flow state that buys energy supply boxes when available and ends monitoring when the inventory is depleted.
 - `tasks/states/StShop.h` / `tasks/states/StShop.cpp`: removed from the repository; shop verification now lives inside `StMainMenuToShop`.

@@ -5,6 +5,7 @@
 #include <QElapsedTimer>
 #include <QImage>
 #include <QList>
+#include <QMutex>
 #include <QQueue>
 
 class TaskBase;
@@ -51,9 +52,16 @@ public:
      * @brief 停止所有任务
      */
     void stop();
+    /**
+     * @brief 关闭任务管理器并清空所有任务
+     */
+    void shutdown();
 
 public slots:
     void onFrameReady(const QImage& frame);
+
+private slots:
+    void processPendingFrame();
 
 signals:
     void logMessage(const QString& msg);
@@ -66,11 +74,18 @@ signals:
                       const QString& finalStatus);
 
 private:
+    void processFrame(const QImage& frame);
+
     QQueue<TaskBase*> m_tasks;//任务队列，按照优先级排序
     bool m_running = false;
     bool m_processingFrame = false; //是否正在处理当前帧，防止重入
-    int m_minFrameIntervalMs = 40; //最小帧间隔，单位毫秒；在截图独立线程下允许更快驱动状态机
+    const int m_minFrameIntervalMs = 40; //最小帧间隔，单位毫秒；在截图独立线程下允许更快驱动状态机
     QElapsedTimer m_frameTimer; //帧计时器，用于控制帧率
+
+    QMutex m_frameMutex; //保护以下成员变量，防止多线程访问冲突
+    QImage m_pendingFrame; //当前待处理的帧，onFrameReady中更新，processPendingFrame中读取并清空
+    bool m_hasPendingFrame = false; //是否有待处理的帧
+    bool m_processScheduled = false; //是否已计划调用processPendingFrame，防止重复调用
 
 };
 

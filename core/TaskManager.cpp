@@ -1,5 +1,7 @@
 ﻿#include "taskmanager.h"
 #include "taskbase.h"
+#include <QMetaObject>
+#include <QMutexLocker>
 #include <QThread>
 #include <QUuid>
 
@@ -101,6 +103,12 @@ void TaskManager::removeTaskById(const QString& taskId)
 
 void TaskManager::start()
 {
+    {
+        QMutexLocker locker(&m_frameMutex);
+        m_pendingFrame = QImage();
+        m_hasPendingFrame = false;
+        m_processScheduled = false;
+    }
     m_running = true;
     m_frameTimer.restart();
     emit logMessage("TaskManager started");
@@ -108,11 +116,98 @@ void TaskManager::start()
 
 void TaskManager::stop()
 {
+    {
+        QMutexLocker locker(&m_frameMutex);
+        m_pendingFrame = QImage();
+        m_hasPendingFrame = false;
+        m_processScheduled = false;
+    }
     m_running = false;
+    m_processingFrame = false;
+    m_frameTimer.invalidate();
     emit logMessage("TaskManager stopped");
 }
 
+void TaskManager::shutdown()
+{
+    {
+        QMutexLocker locker(&m_frameMutex);
+        m_pendingFrame = QImage();
+        m_hasPendingFrame = false;
+        m_processScheduled = false;
+    }
+    m_running = false;
+    m_processingFrame = false;
+    m_frameTimer.invalidate();
+
+    while (!m_tasks.isEmpty()) {
+        TaskBase* task = m_tasks.dequeue();
+        const QString taskId = task->taskId();
+        const QString taskName = task->name();
+        delete task;
+        emit taskFinished(taskId, taskName, "Stopped");
+    }
+
+    emit logMessage("TaskManager shutdown");
+}
+
 void TaskManager::onFrameReady(const QImage &frame)
+{
+    if (!m_running)
+        return;
+
+    {
+        QMutexLocker locker(&m_frameMutex);
+        if (!m_running) {
+            return;
+        }
+        m_pendingFrame = frame;
+        m_hasPendingFrame = true;
+        if (m_processScheduled) {
+            return;
+        }
+        m_processScheduled = true;
+    }
+
+    QMetaObject::invokeMethod(this,
+                              &TaskManager::processPendingFrame,
+                              Qt::QueuedConnection);
+}
+
+void TaskManager::processPendingFrame()
+{
+    QImage frame;
+
+    {
+        QMutexLocker locker(&m_frameMutex);
+        if (!m_running || !m_hasPendingFrame) {
+            m_processScheduled = false;
+            return;
+        }
+        frame = m_pendingFrame;
+        m_hasPendingFrame = false;
+    }
+
+    processFrame(frame);
+
+    bool shouldReschedule = false; //如果在处理当前帧时又收到了新帧，应该继续处理下一帧
+    {
+        QMutexLocker locker(&m_frameMutex);
+        if (m_running && m_hasPendingFrame) {
+            shouldReschedule = true;
+        } else {
+            m_processScheduled = false;
+        }
+    }
+
+    if (shouldReschedule) {
+        QMetaObject::invokeMethod(this,
+                                  &TaskManager::processPendingFrame,
+                                  Qt::QueuedConnection);
+    }
+}
+
+void TaskManager::processFrame(const QImage& frame)
 {
     if(!m_running)
         return;

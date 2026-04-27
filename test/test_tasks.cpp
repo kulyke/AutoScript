@@ -2,6 +2,7 @@
 
 #include "TaskBase.h"
 #include "StepFlowState.h"
+#include "TaskManager.h"
 #include "steps/TemplateSteps.h"
 
 #include <memory>
@@ -141,6 +142,41 @@ public:
 	}
 };
 
+class DestroyAwareState : public StepFlowState
+{
+public:
+	explicit DestroyAwareState(bool* destroyedFlag)
+		: m_destroyedFlag(destroyedFlag)
+	{
+	}
+
+	~DestroyAwareState() override
+	{
+		if (m_destroyedFlag) {
+			*m_destroyedFlag = true;
+		}
+	}
+
+	QString name() const override
+	{
+		return "DestroyAwareState";
+	}
+
+	StepFlowState* update(const QImage& frame) override
+	{
+		Q_UNUSED(frame);
+		return this;
+	}
+
+private:
+	StepFlowState* onFlowFinished() override
+	{
+		return nullptr;
+	}
+
+	bool* m_destroyedFlag;
+};
+
 class FrameworkTests : public QObject
 {
 	Q_OBJECT
@@ -152,6 +188,7 @@ private slots:
 	void timeoutStepFailsAfterFrameLimit();
 	void timeoutMillisecondsStepFailsAfterElapsedTime();
 	void retryStepResetsInnerStepAndReportsRetry();
+	void taskManagerShutdownClearsQueuedTasks();
 };
 
 void FrameworkTests::stepFlowStateProducesSuccessRuntimeMessage()
@@ -236,6 +273,29 @@ void FrameworkTests::retryStepResetsInnerStepAndReportsRetry()
 			 QString("retry 1/2 for step 'FlakyStep': first failure"));
 	QCOMPARE(innerStep->resetCount(), 1);
 	QCOMPARE(retryStep.execute(QImage()), FlowStepStatus::Done);
+}
+
+void FrameworkTests::taskManagerShutdownClearsQueuedTasks()
+{
+	TaskManager manager;
+	bool stateDestroyed = false;
+	auto* task = new TestTask();
+	task->setTaskId("shutdown-test-task");
+	task->setInitialState(new DestroyAwareState(&stateDestroyed));
+
+	QSignalSpy finishedSpy(&manager, &TaskManager::taskFinished);
+
+	manager.addTask(task);
+	QVERIFY(manager.currentTask() != nullptr);
+
+	manager.shutdown();
+
+	QCOMPARE(manager.currentTask(), nullptr);
+	QVERIFY(stateDestroyed);
+	QCOMPARE(finishedSpy.count(), 1);
+	const QList<QVariant> signalArgs = finishedSpy.takeFirst();
+	QCOMPARE(signalArgs.at(0).toString(), QString("shutdown-test-task"));
+	QCOMPARE(signalArgs.at(2).toString(), QString("Stopped"));
 }
 
 }

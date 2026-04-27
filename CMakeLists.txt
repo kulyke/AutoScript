@@ -135,6 +135,7 @@ enable_testing()
 add_executable(AutoScriptTests
     test/test_tasks.cpp
     core/TaskBase.cpp
+    core/TaskManager.cpp
     core/StepFlowState.cpp
     tasks/steps/TemplateSteps.cpp
     automation/DeviceController.cpp

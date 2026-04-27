@@ -11,14 +11,15 @@
 
 ## test
 
-- `test/test_tasks.cpp`: QtTest-based framework tests for StepFlowState, TaskBase, RetryStep, frame-based and millisecond-based timeout wrappers, and millisecond-based delay timing.
+- `test/test_tasks.cpp`: QtTest-based framework tests for StepFlowState, TaskBase, TaskManager shutdown cleanup, RetryStep, frame-based and millisecond-based timeout wrappers, and millisecond-based delay timing.
 - `test/test_matcher.cpp`: placeholder for future vision matcher tests.
 
 ## app
 
 - `app/main.cpp`: application entry, Qt message handler, log file initialization.
 - `app/mainwindow.h`: main window declaration, UI references, worker thread members.
-- `app/mainwindow.cpp`: main UI logic, thread setup, task creation/removal, start/stop orchestration, and taskId-based table synchronization.
+- `app/mainwindow.cpp`: main UI logic, thread setup, task creation/removal, start/stop orchestration, synchronous shutdown cleanup, and taskId-based table synchronization.
+- `app/mainwindow.cpp`: main UI logic, thread setup, task creation/removal, latest-frame capture wiring, synchronous shutdown cleanup, and taskId-based table synchronization.
 - `app/mainwindow.ui`: Qt Designer layout for the main window.
 
 ## automation
@@ -41,7 +42,8 @@
 - `core/TaskBase.h`: base task type, status definitions, task-level timeout configuration.
 - `core/TaskBase.cpp`: task execution, state transition, task status update, stable taskId ownership, state failure reason exposure, and buffered runtime message forwarding across state switches.
 - `core/TaskManager.h`: task queue manager interface.
-- `core/TaskManager.cpp`: task scheduling, frame dispatch, queue-head-driven current task selection, task cleanup, taskId-based runtime notifications, and UI log forwarding for step runtime messages.
+- `core/TaskManager.cpp`: task scheduling, frame dispatch, queue-head-driven current task selection, stop vs shutdown cleanup, taskId-based runtime notifications, and UI log forwarding for step runtime messages.
+- `core/TaskManager.cpp`: task scheduling, latest-frame coalescing for capture input, queue-head-driven current task selection, stop vs shutdown cleanup, taskId-based runtime notifications, and UI log forwarding for step runtime messages.
 - `core/FlowStep.h`: primitive step interface used by step-flow states.
 - `core/StepFlowState.h`: the only task state base class, combining state lifecycle hooks and step-flow support.
 - `core/StepFlowState.cpp`: step sequence engine, failure propagation, flow completion handling, and success/failure runtime message capture.
@@ -104,7 +106,7 @@
 - `vision/TemplateCatalog.h`: template metadata model and lookup interface.
 - `vision/TemplateCatalog.cpp`: current logical template key registry and default thresholds, including the oil-add anchor template used by lightweight oil OCR.
 - `vision/VisionEngine.h`: high-level vision API used by task logic.
-- `vision/VisionEngine.cpp`: image conversion, template metadata resolution, cached template loading, template matching, anchor-based oil ROI extraction, a persistent PaddleOCR bridge, and a local fallback digit recognizer.
+- `vision/VisionEngine.cpp`: image conversion, template metadata resolution, cached template loading, template matching, anchor-based oil ROI extraction, a persistent PaddleOCR bridge with workspace-venv Python resolution, and a local fallback digit recognizer.
 - `vision/TemplateMatcher.h`: low-level matcher interface.
 - `vision/TemplateMatcher.cpp`: multi-scale template matching with NMS and score output.
 
@@ -121,8 +123,8 @@
 - UI thread: `MainWindow`, visual rendering, user interaction.
 - capture thread: `ScreenCapture` only.
 - task thread: `DeviceController`, `VisionEngine`, `TaskManager`.
-- frame flow: `ScreenCapture -> TaskManager -> TaskBase -> StepFlowState -> Vision/Device`.
-- current latency implication: screenshot capture no longer blocks task execution directly, and hot-path waits now depend on elapsed time instead of sparse frame arrival.
+- frame flow: `ScreenCapture -> latest-frame handoff -> TaskManager -> TaskBase -> StepFlowState -> Vision/Device`.
+- current latency implication: screenshot capture no longer blocks task execution directly, old frames are dropped instead of backlogging in the task thread, and hot-path waits now depend on elapsed time instead of sparse frame arrival.
 
 ## Current Optimization Focus
 

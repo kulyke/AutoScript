@@ -23,6 +23,35 @@ constexpr int kPaddleReadyTimeoutMs = 30000;
 constexpr int kPaddleResponseTimeoutMs = 8000;
 constexpr int kPaddleMaxFailures = 3;
 
+QString findBundledPython(const QDir& baseDir)
+{
+#ifdef Q_OS_WIN
+    static const QStringList relativePaths = {
+        ".venv/Scripts/python.exe",
+        "../.venv/Scripts/python.exe",
+        "../../.venv/Scripts/python.exe",
+    };
+#else
+    static const QStringList relativePaths = {
+        ".venv/bin/python3",
+        ".venv/bin/python",
+        "../.venv/bin/python3",
+        "../.venv/bin/python",
+        "../../.venv/bin/python3",
+        "../../.venv/bin/python",
+    };
+#endif
+
+    for (const QString& relativePath : relativePaths) {
+        const QString candidate = QDir::cleanPath(baseDir.filePath(relativePath));
+        if (QFileInfo::exists(candidate)) {
+            return candidate;
+        }
+    }
+
+    return {};
+}
+
 std::optional<int> extractDigitsValue(const QString& text)
 {
     static const QRegularExpression digitsPattern("(\\d+)");
@@ -280,6 +309,11 @@ QString VisionEngine::paddleOcrPythonProgram() const
         return configuredProgram;
     }
 
+    const QString bundledPython = findBundledPython(QDir(QCoreApplication::applicationDirPath()));
+    if (!bundledPython.isEmpty()) {
+        return bundledPython;
+    }
+
     return "python";
 }
 
@@ -351,7 +385,9 @@ bool VisionEngine::ensurePaddleOcrProcess()
     }
 
     m_paddleOcrProcess = new QProcess(this);
-    m_paddleOcrProcess->setProgram(paddleOcrPythonProgram());
+    const QString pythonProgram = paddleOcrPythonProgram();
+    qDebug() << "starting paddle OCR process with" << pythonProgram << scriptPath;
+    m_paddleOcrProcess->setProgram(pythonProgram);
     m_paddleOcrProcess->setArguments({scriptPath});
     m_paddleOcrProcess->setWorkingDirectory(QCoreApplication::applicationDirPath());
     m_paddleOcrProcess->setProcessChannelMode(QProcess::SeparateChannels);

@@ -89,7 +89,7 @@ MainWindow::MainWindow(QWidget *parent)
     /* 连接屏幕捕获器和任务管理器，使得每当有新帧时，任务管理器都能收到并处理 */
     connect(m_capture, &ScreenCapture::frameReady,
             m_taskManager, &TaskManager::onFrameReady,
-            Qt::QueuedConnection);
+            Qt::DirectConnection);
 
     m_captureThread->start();
     //启动任务管理器线程
@@ -99,20 +99,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-    if (m_taskManager) {
-        QMetaObject::invokeMethod(m_taskManager,
-                                  [this]() {
-                                      m_taskManager->stop();
-                                  },
-                                  Qt::BlockingQueuedConnection);
-    }
-    if (m_capture) {
-        QMetaObject::invokeMethod(m_capture,
-                                  [this]() {
-                                      m_capture->stop();
-                                  },
-                                  Qt::BlockingQueuedConnection);
-    }
+    shutdownAutomationRuntime(true);
     if (m_captureThread) {
         m_captureThread->quit();
         m_captureThread->wait();
@@ -123,6 +110,36 @@ MainWindow::~MainWindow()
     }
 
     delete ui;
+}
+
+void MainWindow::shutdownAutomationRuntime(bool clearTasks)
+{
+    if (clearTasks && m_capture && m_taskManager) {
+        disconnect(m_capture,
+                   &ScreenCapture::frameReady,
+                   m_taskManager,
+                   &TaskManager::onFrameReady);
+    }
+
+    if (m_capture && m_captureThread && m_captureThread->isRunning()) {
+        QMetaObject::invokeMethod(m_capture,
+                                  [this]() {
+                                      m_capture->stop();
+                                  },
+                                  Qt::BlockingQueuedConnection);
+    }
+
+    if (m_taskManager && m_taskThread && m_taskThread->isRunning()) {
+        QMetaObject::invokeMethod(m_taskManager,
+                                  [this, clearTasks]() {
+                                      if (clearTasks) {
+                                          m_taskManager->shutdown();
+                                      } else {
+                                          m_taskManager->stop();
+                                      }
+                                  },
+                                  Qt::BlockingQueuedConnection);
+    }
 }
 
 void MainWindow::createUI()
@@ -302,17 +319,8 @@ void MainWindow::onStart()
 void MainWindow::onStop()
 {
     appendLog("Task stopped");
-    QMetaObject::invokeMethod(m_taskManager,
-                              [this]() {
-                                  m_taskManager->stop();
-                              },
-                              Qt::QueuedConnection);
     appendLog("Stop capture");                      
-    QMetaObject::invokeMethod(m_capture,
-                              [this]() {
-                                  m_capture->stop();
-                              },
-                              Qt::QueuedConnection);
+    shutdownAutomationRuntime(false);
 }
 
 void MainWindow::appendLog(const QString &msg)

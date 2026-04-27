@@ -48,6 +48,7 @@ private slots:
 
 private:
     void refreshEmulatorView();
+    void shutdownAutomationRuntime(bool clearTasks);
     QString createTaskId(const QString& taskTypeName) const;
     int findTaskStatusRow(const QString& taskId) const;
     void setTaskStatusRow(const QString& taskId,

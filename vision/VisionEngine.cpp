@@ -23,6 +23,71 @@ constexpr int kPaddleReadyTimeoutMs = 30000;
 constexpr int kPaddleResponseTimeoutMs = 8000;
 constexpr int kPaddleMaxFailures = 3;
 
+// 构建一个相对于图像尺寸的矩形，参数中的比例值应该在0到1之间
+cv::Rect buildRelativeRect(const cv::Size& size,
+                          double xRatio,
+                          double yRatio,
+                          double widthRatio,
+                          double heightRatio)
+{
+    const int x = std::clamp(static_cast<int>(std::floor(size.width * xRatio)), 0, std::max(0, size.width - 1));
+    const int y = std::clamp(static_cast<int>(std::floor(size.height * yRatio)), 0, std::max(0, size.height - 1));
+    const int width = std::clamp(static_cast<int>(std::ceil(size.width * widthRatio)), 1, size.width - x);
+    const int height = std::clamp(static_cast<int>(std::ceil(size.height * heightRatio)), 1, size.height - y);
+    return cv::Rect(x, y, width, height);
+}
+
+std::optional<cv::Rect> locateTemplateByAnchor(TemplateMatcher& matcher,
+                                               const cv::Mat& screenMat,
+                                               const cv::Mat& fullTemplate,
+                                               const cv::Rect& anchorRect,
+                                               double threshold)
+{
+    if (screenMat.empty() || fullTemplate.empty()) {
+        return std::nullopt;
+    }
+    if (anchorRect.width <= 0 || anchorRect.height <= 0) {
+        return std::nullopt;
+    }
+    if (anchorRect.x < 0 || anchorRect.y < 0
+        || anchorRect.x + anchorRect.width > fullTemplate.cols
+        || anchorRect.y + anchorRect.height > fullTemplate.rows) {
+        return std::nullopt;
+    }
+
+    const cv::Mat anchorTemplate = fullTemplate(anchorRect).clone();
+    QPoint matchCenter;
+    double score = 0.0;
+    if (!matcher.findTemplate(screenMat, anchorTemplate, matchCenter, score, threshold)) {
+        return std::nullopt;
+    }
+
+    const int fullLeft = matchCenter.x() - anchorTemplate.cols / 2 - anchorRect.x;
+    const int fullTop = matchCenter.y() - anchorTemplate.rows / 2 - anchorRect.y;
+    const cv::Rect fullRect(fullLeft, fullTop, fullTemplate.cols, fullTemplate.rows);
+    const cv::Rect screenBounds(0, 0, screenMat.cols, screenMat.rows);
+    if ((fullRect & screenBounds) != fullRect) {
+        return std::nullopt;
+    }
+
+    return fullRect;
+}
+
+cv::Mat cropScreenRect(const cv::Mat& screenMat, const cv::Rect& rect)
+{
+    if (screenMat.empty()) {
+        return cv::Mat();
+    }
+
+    const cv::Rect screenBounds(0, 0, screenMat.cols, screenMat.rows);
+    const cv::Rect boundedRect = rect & screenBounds;
+    if (boundedRect.width <= 0 || boundedRect.height <= 0) {
+        return cv::Mat();
+    }
+
+    return screenMat(boundedRect).clone();
+}
+
 QString findBundledPython(const QDir& baseDir)
 {
 #ifdef Q_OS_WIN
@@ -116,6 +181,10 @@ cv::Mat extractLetters(const cv::Mat& image, const cv::Scalar& letterColor, int 
     return mask;
 }
 
+std::vector<cv::Rect> filterDigitBoundsForOcr(const std::vector<cv::Rect>& boxes, const cv::Size& imageSize);
+std::vector<cv::Rect> mergeSplitDigitBounds(const std::vector<cv::Rect>& boxes, const cv::Size& imageSize);
+bool looksLikeSplitZero(const cv::Mat& digit);
+
 std::vector<cv::Rect> findDigitBounds(const cv::Mat& binary)
 {
     std::vector<std::vector<cv::Point>> contours;
@@ -147,6 +216,10 @@ int classifyDigitBySegments(const cv::Mat& digit)
 {
     if (digit.empty()) {
         return -1;
+    }
+
+    if (looksLikeSplitZero(digit)) {
+        return 0;
     }
 
     cv::Mat resized;
@@ -203,7 +276,9 @@ int classifyDigitBySegments(const cv::Mat& digit)
 
 std::optional<int> parseOilDigits(const cv::Mat& digitBinary)
 {
-    const std::vector<cv::Rect> boxes = findDigitBounds(digitBinary);
+    const std::vector<cv::Rect> rawBoxes = findDigitBounds(digitBinary);
+    const std::vector<cv::Rect> filteredBoxes = filterDigitBoundsForOcr(rawBoxes, digitBinary.size());
+    const std::vector<cv::Rect> boxes = mergeSplitDigitBounds(filteredBoxes, digitBinary.size());
     if (boxes.empty()) {
         return std::nullopt;
     }
@@ -245,6 +320,175 @@ cv::Mat thresholdOilDigits(const cv::Mat& oilRoi)
     }
 
     return bestBinary;
+}
+
+int decimalDigitCount(int value)
+{
+    int count = 1;
+    while (value >= 10) {
+        value /= 10;
+        ++count;
+    }
+    return count;
+}
+
+bool looksLikeLeftEdgeArtifact(const cv::Rect& box, const cv::Size& imageSize)
+{
+    if (imageSize.width <= 0 || imageSize.height <= 0) {
+        return false;
+    }
+
+    const int leftEdgeLimit = std::max(2, imageSize.width / 10);
+    const int narrowWidthLimit = std::max(3, imageSize.width / 7);
+    const int tallHeightLimit = std::max(6, imageSize.height / 2);
+    return box.x <= leftEdgeLimit
+        && box.width <= narrowWidthLimit
+        && box.height >= tallHeightLimit
+        && box.height > box.width * 2;
+}
+
+std::vector<cv::Rect> filterDigitBoundsForOcr(const std::vector<cv::Rect>& boxes, const cv::Size& imageSize)
+{
+    std::vector<cv::Rect> filteredBoxes;
+    filteredBoxes.reserve(boxes.size());
+    for (const cv::Rect& box : boxes) {
+        if (looksLikeLeftEdgeArtifact(box, imageSize)) {
+            continue;
+        }
+        filteredBoxes.push_back(box);
+    }
+
+    return filteredBoxes.empty() ? boxes : filteredBoxes;
+}
+
+bool shouldMergeSplitDigitPair(const cv::Rect& leftBox, const cv::Rect& rightBox, const cv::Size& imageSize)
+{
+    if (imageSize.width <= 0 || imageSize.height <= 0) {
+        return false;
+    }
+
+    const int gap = rightBox.x - (leftBox.x + leftBox.width);
+    if (gap < 0) {
+        return false;
+    }
+
+    const int maxGap = std::max(2, imageSize.width / 18);
+    const int maxTopOffset = std::max(2, imageSize.height / 8);
+    const int maxBottomOffset = std::max(2, imageSize.height / 8);
+    const int narrowWidthLimit = std::max(3, imageSize.width / 4);
+    const int tallHeightLimit = std::max(8, (imageSize.height * 3) / 5);
+
+    const int leftBottom = leftBox.y + leftBox.height;
+    const int rightBottom = rightBox.y + rightBox.height;
+    const int mergedWidth = rightBox.x + rightBox.width - leftBox.x;
+    const int maxMergedWidth = std::max(8, (imageSize.width * 3) / 5);
+
+    return gap <= maxGap
+        && std::abs(leftBox.y - rightBox.y) <= maxTopOffset
+        && std::abs(leftBottom - rightBottom) <= maxBottomOffset
+        && leftBox.width <= narrowWidthLimit
+        && rightBox.width <= narrowWidthLimit
+        && leftBox.height >= tallHeightLimit
+        && rightBox.height >= tallHeightLimit
+        && mergedWidth <= maxMergedWidth;
+}
+
+std::vector<cv::Rect> mergeSplitDigitBounds(const std::vector<cv::Rect>& boxes, const cv::Size& imageSize)
+{
+    if (boxes.size() < 2) {
+        return boxes;
+    }
+
+    std::vector<cv::Rect> mergedBoxes;
+    mergedBoxes.reserve(boxes.size());
+    for (size_t index = 0; index < boxes.size(); ++index) {
+        cv::Rect current = boxes[index];
+        if (index + 1 < boxes.size() && shouldMergeSplitDigitPair(current, boxes[index + 1], imageSize)) {
+            current |= boxes[index + 1];
+            ++index;
+        }
+        mergedBoxes.push_back(current);
+    }
+
+    return mergedBoxes;
+}
+
+bool looksLikeSplitZero(const cv::Mat& digit)
+{
+    const std::vector<cv::Rect> boxes = findDigitBounds(digit);
+    if (boxes.size() != 2) {
+        return false;
+    }
+
+    const cv::Rect& leftBox = boxes[0];
+    const cv::Rect& rightBox = boxes[1];
+    if (!shouldMergeSplitDigitPair(leftBox, rightBox, digit.size())) {
+        return false;
+    }
+
+    const int gap = rightBox.x - (leftBox.x + leftBox.width);
+    const int mergedWidth = rightBox.x + rightBox.width - leftBox.x;
+    return gap >= 1 && mergedWidth >= std::max(6, digit.cols / 3);
+}
+
+struct PreparedDigitOcrInput
+{
+    cv::Mat image;
+    int expectedDigitCount = 0;
+};
+
+PreparedDigitOcrInput prepareDigitOcrInputForPaddle(const cv::Mat& digitRoi)
+{
+    PreparedDigitOcrInput prepared;
+    if (digitRoi.empty()) {
+        return prepared;
+    }
+
+    const cv::Mat digitBinary = thresholdOilDigits(digitRoi);
+    if (digitBinary.empty()) {
+        prepared.image = digitRoi.clone();
+        return prepared;
+    }
+
+    const std::vector<cv::Rect> rawBoxes = findDigitBounds(digitBinary);
+    const std::vector<cv::Rect> filteredBoxes = filterDigitBoundsForOcr(rawBoxes, digitBinary.size());
+    const std::vector<cv::Rect> digitBoxes = mergeSplitDigitBounds(filteredBoxes, digitBinary.size());
+    if (digitBoxes.empty()) {
+        prepared.image = digitRoi.clone();
+        return prepared;
+    }
+
+    cv::Rect unionRect = digitBoxes.front();
+    for (size_t index = 1; index < digitBoxes.size(); ++index) {
+        unionRect |= digitBoxes[index];
+    }
+
+    const int padX = std::max(2, digitBinary.cols / 24);
+    const int padY = std::max(2, digitBinary.rows / 12);
+    const cv::Rect imageBounds(0, 0, digitBinary.cols, digitBinary.rows);
+    unionRect.x = std::max(0, unionRect.x - padX);
+    unionRect.y = std::max(0, unionRect.y - padY);
+    unionRect.width = std::min(imageBounds.width - unionRect.x, unionRect.width + padX * 2);
+    unionRect.height = std::min(imageBounds.height - unionRect.y, unionRect.height + padY * 2);
+
+    cv::Mat croppedBinary = digitBinary(unionRect).clone();
+    cv::copyMakeBorder(croppedBinary,
+                       croppedBinary,
+                       padY,
+                       padY,
+                       padX,
+                       padX,
+                       cv::BORDER_CONSTANT,
+                       cv::Scalar(0));
+    cv::resize(croppedBinary,
+               croppedBinary,
+               cv::Size(),
+               3.0,
+               3.0,
+               cv::INTER_NEAREST);
+    cv::cvtColor(croppedBinary, prepared.image, cv::COLOR_GRAY2BGR);
+    prepared.expectedDigitCount = static_cast<int>(digitBoxes.size());
+    return prepared;
 }
 
 }
@@ -520,91 +764,6 @@ cv::Mat VisionEngine::locateWorldZoneOilRoi(const cv::Mat& screenMat)
     return screenMat(oilRect).clone();
 }
 
-std::optional<int> VisionEngine::readWorldZoneOilCountWithPaddle(const cv::Mat& oilRoi)
-{
-    if (oilRoi.empty() || !ensurePaddleOcrProcess()) {
-        return std::nullopt;
-    }
-
-    std::vector<uchar> encodedBytes;
-    if (!cv::imencode(".png", oilRoi, encodedBytes)) {
-        return std::nullopt;
-    }
-
-    const QByteArray imageBytes(reinterpret_cast<const char*>(encodedBytes.data()),
-                                static_cast<int>(encodedBytes.size()));
-    const QJsonObject requestObject{
-        {"image_base64", QString::fromLatin1(imageBytes.toBase64())}
-    };
-    const QByteArray requestLine = QJsonDocument(requestObject).toJson(QJsonDocument::Compact) + '\n';
-    m_paddleOcrProcess->write(requestLine);
-    if (!m_paddleOcrProcess->waitForBytesWritten(1000)) {
-        ++m_paddleOcrFailureCount;
-        qDebug() << "paddle OCR write failed:" << m_paddleOcrProcess->errorString();
-        if (m_paddleOcrFailureCount >= kPaddleMaxFailures) {
-            m_paddleOcrDisabled = true;
-        }
-        shutdownPaddleOcrProcess();
-        return std::nullopt;
-    }
-
-    const QByteArray responseLine = readNextJsonLine(m_paddleOcrProcess, kPaddleResponseTimeoutMs);
-    if (responseLine.isEmpty()) {
-        ++m_paddleOcrFailureCount;
-        qDebug() << "paddle OCR response timeout, stderr="
-                 << QString::fromUtf8(m_paddleOcrProcess->readAllStandardError()).trimmed();
-        if (m_paddleOcrFailureCount >= kPaddleMaxFailures) {
-            m_paddleOcrDisabled = true;
-        }
-        shutdownPaddleOcrProcess();
-        return std::nullopt;
-    }
-
-    const QJsonDocument responseDoc = QJsonDocument::fromJson(responseLine);
-    if (!responseDoc.isObject()) {
-        ++m_paddleOcrFailureCount;
-        qDebug() << "invalid paddle OCR response:" << responseLine;
-        if (m_paddleOcrFailureCount >= kPaddleMaxFailures) {
-            m_paddleOcrDisabled = true;
-        }
-        shutdownPaddleOcrProcess();
-        return std::nullopt;
-    }
-
-    const QJsonObject responseObject = responseDoc.object();
-    if (responseObject.value("ok").toBool()) {
-        const std::optional<int> value = extractDigitsValue(responseObject.value("text").toString());
-        if (value.has_value()) {
-            m_paddleOcrFailureCount = 0;
-            qDebug() << "oil OCR success value=" << *value << "mode=paddleocr";
-            return value;
-        }
-    }
-
-    ++m_paddleOcrFailureCount;
-    qDebug() << "paddle OCR returned no digits:" << responseLine;
-    if (m_paddleOcrFailureCount >= kPaddleMaxFailures) {
-        qDebug() << "disabling paddle OCR after repeated failures";
-        m_paddleOcrDisabled = true;
-        shutdownPaddleOcrProcess();
-    }
-    return std::nullopt;
-}
-
-std::optional<int> VisionEngine::readWorldZoneOilCountFallback(const cv::Mat& oilRoi)
-{
-    if (oilRoi.empty()) {
-        return std::nullopt;
-    }
-
-    const cv::Mat oilBinary = thresholdOilDigits(oilRoi);
-    const std::optional<int> oilValue = parseOilDigits(oilBinary);
-    if (oilValue.has_value()) {
-        qDebug() << "oil OCR success value=" << *oilValue << "mode=local-fallback";
-    }
-    return oilValue;
-}
-
 static int count = 0;
 std::optional<int> VisionEngine::readWorldZoneOilCount(const QImage& screen)
 {
@@ -618,12 +777,251 @@ std::optional<int> VisionEngine::readWorldZoneOilCount(const QImage& screen)
         return std::nullopt;
     }
 
-    cv::imwrite(QString("debug_oil_roi_%1.png").arg(count++).toStdString(), oilRoi);
+    cv::imwrite(QString("debug_%1_%2.png").arg("worldZoneOil").arg(count++).toStdString(), oilRoi);
 
-    // if (const std::optional<int> paddleValue = readWorldZoneOilCountWithPaddle(oilRoi)) {
-    //     return paddleValue;
-    // }
+    return readDigitsFromRoi(oilRoi, "worldZoneOil");
+}
 
-    // return readWorldZoneOilCountFallback(oilRoi);
-    return readWorldZoneOilCountWithPaddle(oilRoi);
+std::optional<OilRefillDialogInfo> VisionEngine::readOilRefillDialogInfo(const QImage& screen)
+{
+    cv::Mat screenMat = QImageToMat(screen);
+    if (screenMat.empty()) {
+        return std::nullopt;
+    }
+
+    OilRefillDialogInfo dialogInfo;
+    if (!findTemplate(screen,
+                      "worldZone.oil.refill.confirm.button",
+                      dialogInfo.confirmButtonPoint,
+                      -1.0)) {
+        return std::nullopt;
+    }
+    if (!findTemplate(screen,
+                      "worldZone.oil.refill.cancel.button",
+                      dialogInfo.cancelButtonPoint,
+                      -1.0)) {
+        return std::nullopt;
+    }
+
+    // 解析当前油量和补给数量
+    auto readSupplyEntry = [this, &screenMat](const QString& templateKey,
+                                              double anchorWidthRatio,
+                                              double anchorHeightRatio,
+                                              double digitsXRatio,
+                                              double digitsYRatio,
+                                              double digitsWidthRatio,
+                                              double digitsHeightRatio,
+                                              int& outCount,
+                                              QPoint& outPoint,
+                                              const QString& logContext) -> bool {
+        QString resolvedPath;
+        double defaultThreshold = 0.9;
+        const cv::Mat fullTemplate = loadTemplate(templateKey, resolvedPath, defaultThreshold);
+        if (fullTemplate.empty()) {
+            return false;
+        }
+
+        const cv::Rect anchorRect = buildRelativeRect(fullTemplate.size(), 0.0, 0.0, anchorWidthRatio, anchorHeightRatio);
+        const std::optional<cv::Rect> fullRect = locateTemplateByAnchor(m_matcher,
+                                                                        screenMat,
+                                                                        fullTemplate,
+                                                                        anchorRect,
+                                                                        defaultThreshold);
+        if (!fullRect.has_value()) {
+            return false;
+        }
+
+        outPoint = QPoint(fullRect->x + fullRect->width / 2,
+                          fullRect->y + fullRect->height / 2);
+        const cv::Rect digitsRect = buildRelativeRect(fullTemplate.size(),
+                                                      digitsXRatio,
+                                                      digitsYRatio,
+                                                      digitsWidthRatio,
+                                                      digitsHeightRatio);
+        const cv::Mat digitsRoi = cropScreenRect(screenMat,
+                                                 cv::Rect(fullRect->x + digitsRect.x,
+                                                          fullRect->y + digitsRect.y,
+                                                          digitsRect.width,
+                                                          digitsRect.height));
+        static int count = 0;
+        cv::imwrite(QString("debug_%1_%2.png").arg(logContext).arg(count++).toStdString(), digitsRoi);
+        const std::optional<int> digits = readDigitsFromRoi(digitsRoi, logContext);
+        if (!digits.has_value()) {
+            return false;
+        }
+
+        outCount = *digits;
+        return true;
+    };
+
+    QPoint currentOilAnchorPoint;
+    if (!readSupplyEntry("worldZone.oil.refill.currentOil",
+                         0.72,
+                         1.0,
+                         0.72,
+                         0.0,
+                         0.28,
+                         1.0,
+                         dialogInfo.currentOil,
+                         currentOilAnchorPoint,
+                         "oilRefillCurrentOil")) {
+        return std::nullopt;
+    }
+
+    // Supply counts can be three digits on real accounts, so keep more room on the left edge
+    // than the template preview suggests. The previous ROI could clip the leading digit.
+    constexpr double kSupplyDigitsXRatio = 0.62;
+    constexpr double kSupplyDigitsYRatio = 0.74;
+    constexpr double kSupplyDigitsWidthRatio = 0.38;
+    constexpr double kSupplyDigitsHeightRatio = 0.26;
+
+    if (!readSupplyEntry("worldZone.oil.refill.supply.blue",
+                         0.72,
+                         0.78,
+                         kSupplyDigitsXRatio,
+                         kSupplyDigitsYRatio,
+                         kSupplyDigitsWidthRatio,
+                         kSupplyDigitsHeightRatio,
+                         dialogInfo.blueSupplyCount,
+                         dialogInfo.blueSupplyPoint,
+                         "oilRefillBlueCount")) {
+        return std::nullopt;
+    }
+
+    if (!readSupplyEntry("worldZone.oil.refill.supply.purple",
+                         0.72,
+                         0.78,
+                         kSupplyDigitsXRatio,
+                         kSupplyDigitsYRatio,
+                         kSupplyDigitsWidthRatio,
+                         kSupplyDigitsHeightRatio,
+                         dialogInfo.purpleSupplyCount,
+                         dialogInfo.purpleSupplyPoint,
+                         "oilRefillPurpleCount")) {
+        return std::nullopt;
+    }
+
+    if (!readSupplyEntry("worldZone.oil.refill.supply.yellow",
+                         0.72,
+                         0.78,
+                         kSupplyDigitsXRatio,
+                         kSupplyDigitsYRatio,
+                         kSupplyDigitsWidthRatio,
+                         kSupplyDigitsHeightRatio,
+                         dialogInfo.yellowSupplyCount,
+                         dialogInfo.yellowSupplyPoint,
+                         "oilRefillYellowCount")) {
+        return std::nullopt;
+    }
+
+    qDebug() << "oil refill dialog state currentOil=" << dialogInfo.currentOil
+             << "blue=" << dialogInfo.blueSupplyCount
+             << "purple=" << dialogInfo.purpleSupplyCount
+             << "yellow=" << dialogInfo.yellowSupplyCount;
+    return dialogInfo;
+}
+
+std::optional<int> VisionEngine::readDigitsWithPaddle(const cv::Mat& digitRoi, const QString& logContext)
+{
+    if (digitRoi.empty() || !ensurePaddleOcrProcess()) {
+        return std::nullopt;
+    }
+
+    const PreparedDigitOcrInput preparedInput = prepareDigitOcrInputForPaddle(digitRoi);
+    const cv::Mat& ocrInput = preparedInput.image.empty() ? digitRoi : preparedInput.image;
+
+    std::vector<uchar> encodedBytes;
+    if (!cv::imencode(".png", ocrInput, encodedBytes)) {
+        return std::nullopt;
+    }
+    cv::imwrite(QString("debug_%1_input.png").arg(logContext).toStdString(), ocrInput);
+
+    const QByteArray imageBytes(reinterpret_cast<const char*>(encodedBytes.data()),
+                                static_cast<int>(encodedBytes.size()));
+    const QJsonObject requestObject{
+        {"image_base64", QString::fromLatin1(imageBytes.toBase64())}
+    };
+    const QByteArray requestLine = QJsonDocument(requestObject).toJson(QJsonDocument::Compact) + '\n';
+    m_paddleOcrProcess->write(requestLine);
+    if (!m_paddleOcrProcess->waitForBytesWritten(1000)) {
+        ++m_paddleOcrFailureCount;
+        qDebug() << logContext << "paddle OCR write failed:" << m_paddleOcrProcess->errorString();
+        if (m_paddleOcrFailureCount >= kPaddleMaxFailures) {
+            m_paddleOcrDisabled = true;
+        }
+        shutdownPaddleOcrProcess();
+        return std::nullopt;
+    }
+
+    const QByteArray responseLine = readNextJsonLine(m_paddleOcrProcess, kPaddleResponseTimeoutMs);
+    if (responseLine.isEmpty()) {
+        ++m_paddleOcrFailureCount;
+        qDebug() << logContext << "paddle OCR response timeout, stderr="
+                 << QString::fromUtf8(m_paddleOcrProcess->readAllStandardError()).trimmed();
+        if (m_paddleOcrFailureCount >= kPaddleMaxFailures) {
+            m_paddleOcrDisabled = true;
+        }
+        shutdownPaddleOcrProcess();
+        return std::nullopt;
+    }
+
+    const QJsonDocument responseDoc = QJsonDocument::fromJson(responseLine);
+    if (!responseDoc.isObject()) {
+        ++m_paddleOcrFailureCount;
+        qDebug() << logContext << "invalid paddle OCR response:" << responseLine;
+        if (m_paddleOcrFailureCount >= kPaddleMaxFailures) {
+            m_paddleOcrDisabled = true;
+        }
+        shutdownPaddleOcrProcess();
+        return std::nullopt;
+    }
+
+    const QJsonObject responseObject = responseDoc.object();
+    if (responseObject.value("ok").toBool()) {
+        const std::optional<int> value = extractDigitsValue(responseObject.value("text").toString());
+        if (value.has_value()) {
+            if (preparedInput.expectedDigitCount > 0
+                && decimalDigitCount(*value) > preparedInput.expectedDigitCount) {
+                qDebug() << logContext
+                         << "reject paddle OCR digit count mismatch value=" << *value
+                         << "expectedDigits=" << preparedInput.expectedDigitCount;
+                return std::nullopt;
+            }
+            m_paddleOcrFailureCount = 0;
+            qDebug() << logContext << "OCR success value=" << *value << "mode=paddleocr";
+            return value;
+        }
+    }
+
+    ++m_paddleOcrFailureCount;
+    qDebug() << logContext << "paddle OCR returned no digits:" << responseLine;
+    if (m_paddleOcrFailureCount >= kPaddleMaxFailures) {
+        qDebug() << "disabling paddle OCR after repeated failures";
+        m_paddleOcrDisabled = true;
+        shutdownPaddleOcrProcess();
+    }
+    return std::nullopt;
+}
+
+std::optional<int> VisionEngine::readDigitsFallback(const cv::Mat& digitRoi, const QString& logContext)
+{
+    if (digitRoi.empty()) {
+        return std::nullopt;
+    }
+
+    const cv::Mat digitBinary = thresholdOilDigits(digitRoi);
+    const std::optional<int> value = parseOilDigits(digitBinary);
+    if (value.has_value()) {
+        qDebug() << logContext << "OCR success value=" << *value << "mode=local-fallback";
+    }
+    return value;
+}
+
+std::optional<int> VisionEngine::readDigitsFromRoi(const cv::Mat& digitRoi, const QString& logContext)
+{
+    if (const std::optional<int> paddleValue = readDigitsWithPaddle(digitRoi, logContext)) {
+        return paddleValue;
+    }
+
+    return readDigitsFallback(digitRoi, logContext);
 }

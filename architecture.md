@@ -88,7 +88,7 @@
 - `tasks/states/StWorldOceanMonitorPlanBattle.cpp`: stop-condition-driven monitor that reacts to `worldZone.planBattle.noAutoEvent.message`, taps the leave-reward button, then resolves meowfficer/oil outcomes on later stabilized frames before transitioning.
 - `tasks/states/StWorldOceanRecoverOil.h`: state declaration for oil recovery during plan battle.
 - `tasks/states/StWorldOceanRecoverOil.cpp`: step-flow state that stops plan battle, refills oil, and restarts plan battle.
-- `tasks/states/StWorldOceanRecoverOil.cpp`: step-flow state that first waits to return to the world-zone page, then stops plan battle, refills oil, and restarts plan battle.
+- `tasks/states/StWorldOceanRecoverOil.cpp`: step-flow state that opens the oil refill dialog, delegates supply selection to a dialog-handling step, then restarts plan battle.
 - `tasks/states/StWorldOceanHandleMeowfficerShop.h`: state declaration for meowfficer shop handling during plan battle.
 - `tasks/states/StWorldOceanHandleMeowfficerShop.cpp`: step-flow state that buys energy supply boxes when available and ends monitoring when the inventory is depleted.
 - `tasks/states/StShop.h` / `tasks/states/StShop.cpp`: removed from the repository; shop verification now lives inside `StMainMenuToShop`.
@@ -98,7 +98,7 @@
 - `tasks/steps/TemplateSteps.h`: reusable template-related steps, fixed device actions, retry wrapper, and both frame-based and elapsed-time-based timing wrappers, including millisecond timeout wrappers for slow-frame paths.
 - `tasks/steps/TemplateSteps.cpp`: implementations of template wait/click, tap/swipe/keyevent, retry, frame delay, millisecond delay, frame timeout, and millisecond timeout, with explicit action failure reporting and retry runtime messages.
 - `tasks/steps/WorldOceanSteps.h`: plan-battle-specific custom step declarations.
-- `tasks/steps/WorldOceanSteps.cpp`: custom steps for meowfficer supply purchase and depletion detection.
+- `tasks/steps/WorldOceanSteps.cpp`: custom steps for meowfficer supply purchase plus oil-refill dialog analysis, supply selection, and depletion-aware refill behavior.
 - `tasks/steps/WorldMapSteps.h`: world-map-specific step declarations.
 - `tasks/steps/WorldMapSteps.cpp`: world-map bootstrap, current-zone resolution, target-zone focus, target-zone tap, and entry verification steps for metadata loading and jump-chain execution, including millisecond-based settle timing after swipes.
 
@@ -107,7 +107,7 @@
 - `vision/TemplateCatalog.h`: template metadata model and lookup interface.
 - `vision/TemplateCatalog.cpp`: current logical template key registry and default thresholds, including the oil-add anchor template used by lightweight oil OCR.
 - `vision/VisionEngine.h`: high-level vision API used by task logic.
-- `vision/VisionEngine.cpp`: image conversion, template metadata resolution, cached template loading, template matching, anchor-based oil ROI extraction, a persistent PaddleOCR bridge with workspace-venv Python resolution and startup prewarm, and a local fallback digit recognizer.
+- `vision/VisionEngine.cpp`: image conversion, template metadata resolution, cached template loading, template matching, anchor-based oil ROI extraction, tuned oil-refill dialog OCR ROIs for current oil and supply counts, preprocessed digit-only PaddleOCR input with left-edge artifact filtering, split-zero contour merging for cracked glyphs, a persistent PaddleOCR bridge with workspace-venv Python resolution and startup prewarm, and a restored local fallback digit recognizer for Paddle miss cases.
 - `vision/TemplateMatcher.h`: low-level matcher interface.
 - `vision/TemplateMatcher.cpp`: multi-scale template matching with NMS and score output.
 

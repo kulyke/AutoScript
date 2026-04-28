@@ -66,6 +66,11 @@
 - Moved Paddle OCR helper startup earlier by prewarming the process when the software opens, so the first oil-recognition request no longer pays the full model cold-start cost.
 - Hardened oil recovery entry so `StWorldOceanRecoverOil` waits for `worldZone.title` before clicking the stop-plan-battle button, preventing battle-scene auto-search controls from being misidentified as the world-zone stop button during scene transitions.
 - Updated plan-battle monitoring to use `worldZone.planBattle.noAutoEvent.message` as the stop-condition trigger, then defer meowfficer/oil resolution until a later post-tap frame so the leave-reward tap does not reuse stale pre-tap imagery.
+- Expanded oil recovery so the refill dialog now reads current oil plus blue/purple/yellow supply counts, automatically uses supplies until oil exceeds 100 while preserving at least 7 blue boxes when possible, then closes the dialog and resumes plan battle.
+- Tuned the oil-refill supply-count ROI against real dialog crops so three-digit box counts are less likely to lose the leading digit during OCR.
+- Hardened oil-refill supply-count OCR by stripping likely left-edge box artifacts before PaddleOCR and falling back to the local digit parser when Paddle returns suspicious extra digits.
+- Restored the supply-count OCR fallback chain so single-digit cases like a lone 0 can still be resolved by the local parser when PaddleOCR misses them.
+- Added split-zero handling in the local supply-count parser by merging adjacent narrow contours before classification, preventing cracked 0 glyphs from being misread as multi-digit values like 69.
 
 ## Current Flow
 

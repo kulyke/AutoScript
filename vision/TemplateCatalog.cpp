@@ -118,6 +118,36 @@ QList<TemplateMetadata> buildTemplateDefinitions()
             0.9,
             "Oil refill confirm button"
         },
+        {
+            "worldZone.oil.refill.cancel.button",
+            "resources/templates/worldZone.oil.refill.cancel.button.png",
+            0.9,
+            "Oil refill cancel button"
+        },
+        {
+            "worldZone.oil.refill.currentOil",
+            "resources/templates/worldZone.oil.refill.currentOil.png",
+            0.8,
+            "Current oil anchor on oil refill dialog"
+        },
+        {
+            "worldZone.oil.refill.supply.blue",
+            "resources/templates/energySupplyBlue.png",
+            0.7,
+            "Blue energy supply box on oil refill dialog"
+        },
+        {
+            "worldZone.oil.refill.supply.purple",
+            "resources/templates/energySupplyPurple.png",
+            0.7,
+            "Purple energy supply box on oil refill dialog"
+        },
+        {
+            "worldZone.oil.refill.supply.yellow",
+            "resources/templates/energySupplyYellow.png",
+            0.7,
+            "Yellow energy supply box on oil refill dialog"
+        },
         // 猫官商店相关模板
         {
             "worldZone.meowfficer.button",

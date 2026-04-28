@@ -3,6 +3,7 @@
 #include "visionengine.h"
 #include "devicecontroller.h"
 #include "steps/TemplateSteps.h"
+#include "steps/WorldOceanSteps.h"
 
 #include "StWorldOceanPlanBattleMode.h"
 #include "WorldOceanPlanBattleRuntimeContext.h"
@@ -34,32 +35,14 @@ StWorldOceanRecoverOil::StWorldOceanRecoverOil(VisionEngine* vision,
     // 等待油量补给对话框出现，确认点击加油按钮后界面有响应；如果界面无响应可能是误点了其他按钮，导致后续步骤找不到预期模板而失败
     addStep(std::make_unique<DelayMillisecondsStep>(100, "Wait oil refill dialog"));
 
-    addStep(std::make_unique<RetryStep>(
-        std::make_unique<TimeoutMillisecondsStep>(
-            std::make_unique<ClickTemplateStep>(
-                m_vision,
-                m_device,
-                "worldZone.oil.refill.confirm.button",
-                -1.0,
-                "Click oil refill confirm button"),
-            2200,
-            "Timeout click oil refill confirm button"),
-        2,
-        "Retry click oil refill confirm button"));
-
-    addStep(std::make_unique<DelayMillisecondsStep>(160, "Wait oil refill complete"));
-
-    // addStep(std::make_unique<RetryStep>(
-    //     std::make_unique<TimeoutMillisecondsStep>(
-    //         std::make_unique<WaitTemplateStep>(
-    //             m_vision,
-    //             "worldZone.title",
-    //             -1.0,
-    //             "Wait world zone title after oil refill"),
-    //         3200,
-    //         "Timeout wait world zone title after oil refill"),
-    //     1,
-    //     "Retry wait world zone title after oil refill"));
+    addStep(std::make_unique<TimeoutMillisecondsStep>(
+        std::make_unique<UseOilRefillSuppliesStep>(
+            m_vision,
+            m_device,
+            m_runtimeContext.get(),
+            "Handle oil refill dialog"),
+        25000,
+        "Timeout handle oil refill dialog"));
 }
 
 StWorldOceanRecoverOil::~StWorldOceanRecoverOil()

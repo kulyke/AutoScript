@@ -12,6 +12,19 @@
 
 class QProcess;
 struct TemplateMetadata;
+
+struct OilRefillDialogInfo
+{
+    int currentOil = -1;
+    int blueSupplyCount = -1;
+    int purpleSupplyCount = -1;
+    int yellowSupplyCount = -1;
+    QPoint blueSupplyPoint;
+    QPoint purpleSupplyPoint;
+    QPoint yellowSupplyPoint;
+    QPoint confirmButtonPoint;
+    QPoint cancelButtonPoint;
+};
 /**
  * @brief  视觉引擎，执行具体的视觉任务
  * 
@@ -40,6 +53,7 @@ public:
      * @return 识别出的石油值；识别失败时返回空
      */
     std::optional<int> readWorldZoneOilCount(const QImage& screen);
+    std::optional<OilRefillDialogInfo> readOilRefillDialogInfo(const QImage& screen);
 
 private:
     /**
@@ -73,13 +87,17 @@ private:
      * @param oilRoi 石油值区域的图像
      * @return 识别出的石油值；识别失败时返回空
      */
-    std::optional<int> readWorldZoneOilCountWithPaddle(const cv::Mat& oilRoi);
+    std::optional<int> readDigitsWithPaddle(const cv::Mat& digitRoi, const QString& logContext);
     /**
      * @brief 使用传统图像处理方法识别石油值
      * @param oilRoi 石油值区域的图像
      * @return 识别出的石油值；识别失败时返回空
      */
-    std::optional<int> readWorldZoneOilCountFallback(const cv::Mat& oilRoi);
+    std::optional<int> readDigitsFallback(const cv::Mat& digitRoi, const QString& logContext);
+    /**
+     * @brief 从石油值区域图像中识别石油值，先尝试Paddle OCR，失败后使用传统方法作为回退
+     */
+    std::optional<int> readDigitsFromRoi(const cv::Mat& digitRoi, const QString& logContext);
     
     bool ensurePaddleOcrProcess();
     void shutdownPaddleOcrProcess();
